@@ -1,0 +1,12 @@
+# Some parts taken from
+# https://github.com/github/gitignore/blob/master/Python.gitignore
+
+# Byte-compiled / optimized / DLL files
+__pychache__/
+*.py[cod]
+
+# Distribution / packaging
+*.egg-info
+
+# Text editor / IDE
+*.swp
