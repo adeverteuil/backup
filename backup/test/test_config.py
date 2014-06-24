@@ -7,58 +7,70 @@ class ConfigSetup(BasicSetup):
 
     """Override BasicSetup's methods for added functionnality."""
 
-    def setUp(self):
-        super().setUp()
-        # Always start tests with a clean environment.
-        BackupEnvironmentCollector.environ = dict()
+    pass
 
 
-class TestHardCodedConfiguration(ConfigSetup):
+class TestBaseConfiguration(ConfigSetup):
 
     def test_init(self):
-        c = HardCodedConfiguration()
+        c = BaseConfiguration()
 
     def test_computed_attributes(self):
-        c = HardCodedConfiguration()
-        self.assertEqual(c.configfile, "/etc/backup")
+        c = BaseConfiguration()
+        self.assertEqual(c['configfile'], "/etc/backup")
 
     def test_values(self):
-        c = HardCodedConfiguration()
+        c = BaseConfiguration()
         # Check sane values for source directories list.
         for d in ("/sys", "/proc", "/dev"):
-            self.assertNotIn(d, c.sources)
+            self.assertNotIn(d, c['sources'])
         for d in ("/etc", "/home", "/usr"):
-            self.assertIn(d, c.sources)
+            self.assertIn(d, c['sources'])
 
 
-class TestBackupEnvironmentCollector(ConfigSetup):
+class TestEnvironmentReader(ConfigSetup):
 
     def test_init(self):
-        a = BackupEnvironmentCollector()
+        c = EnvironmentReader()
+        self.assertIsInstance(c, BaseConfiguration)
 
     def test_empty_environ(self):
-        BackupEnvironmentCollector.environ = dict()
-        c = BackupEnvironmentCollector()
-        self.assertEqual(c.configfile, "/etc/backup")
+        c = EnvironmentReader(environ=dict())
+        self.assertEqual(c['configfile'], "/etc/backup")
 
     def test_loaded_environ(self):
-        BackupEnvironmentCollector.environ = {
+        environ = {
             'BACKUP_CONFIGFILE': self.configfile,
             }
-        c = BackupEnvironmentCollector()
-        self.assertEqual(c.configfile, self.configfile)
+        c = EnvironmentReader(environ=environ)
+        self.assertEqual(c['configfile'], self.configfile)
 
 
-class TestBackupConfigParser(ConfigSetup):
-
-    def test_init(self):
-        c = BackupConfigParser(self.configfile)
-
-
-class TestBackupArgumentParser(ConfigSetup):
+class TestPartialArgumentParser(ConfigSetup):
 
     def test_init(self):
-        c = BackupArgumentParser()
+        c = PartialArgumentParser()
+        self.assertIsInstance(c, BaseConfiguration)
+        self.assertIsInstance(c, EnvironmentReader)
+
+
+class TestConfigParser(ConfigSetup):
+
+    def test_init(self):
+        c = ConfigParser(configfile=self.configfile)
+        self.assertIsInstance(c, BaseConfiguration)
+        self.assertIsInstance(c, EnvironmentReader)
+        self.assertIsInstance(c, PartialArgumentParser)
+
+
+class TestArgumentParser(ConfigSetup):
+
+    def test_init(self):
+        c = ArgumentParser()
+        self.assertIsInstance(c, BaseConfiguration)
+        self.assertIsInstance(c, EnvironmentReader)
+        self.assertIsInstance(c, PartialArgumentParser)
+        self.assertIsInstance(c, ConfigParser)
 
 
 class TestConfiguration(ConfigSetup):
@@ -69,6 +81,11 @@ class TestConfiguration(ConfigSetup):
             'BACKUP_CONFIGFILE': self.configfile,
             }
         c = Configuration()
+        self.assertIsInstance(c, BaseConfiguration)
+        self.assertIsInstance(c, EnvironmentReader)
+        self.assertIsInstance(c, PartialArgumentParser)
+        self.assertIsInstance(c, ConfigParser)
+        self.assertIsInstance(c, ArgumentParser)
 
 
 # vim:cc=80

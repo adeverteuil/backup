@@ -32,13 +32,14 @@ import tempfile
 import unittest
 
 
-BASEDIR = os.path.abspath(os.path.dirname(__file__))
+# This is where temporary directories will live for a brief moment.
+BASEDIR = os.getcwd()
 
 
 class BasicSetup(unittest.TestCase):
 
     """Dummy TestCase with basic setup to be inherited."""
-    
+
     def setUp(self):
         """Create temporary directories and files for testing purposes."""
         os.chdir(BASEDIR)

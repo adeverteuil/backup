@@ -20,30 +20,32 @@
 
 """Get configuration options.
 
-This module declares the following classes:
+This module declares the following classes, which are in linear hierarchy all
+inheriting from BaseConfiguration:
 
-    HardCodedConfigurator
-        Contains default values for all options.
-    BackupConfigParser
+    BaseConfiguration
+        Contains default hard coded values for all options.
+    EnvironmentReader
+        Reads configuration from environment variables.
+    PartialArgumentParser
+        Parses command line arguments for the configfile option only.
+    ConfigParser
         Parses configuration files.
-    BackupArgumentParser
+    ArgumentParser
         Parses command line arguments.
-    BackupConfigurator
+    Configuration
         Calls all the previously named classes and produces a complete
         options set. Some command line arguments override options found
         in configuration files which in turn override defaults.
 
-Configuration options are read from many sources and override eachother
-in this order:
+The backup script only needs to instantiate Configuration. When requesting the
+value of an option, the following sources are looked at in order:
 
+    Constructor arguments (useful for unit testing)
     Command line arguments
-    Configuration file
+    Configuration files
     Environment variables
-    Source code
-
-However, the configuration file path may be specified on the command line.
-Therefore, the command line arguments must be parsed first, then the
-configuration file is read, then the overriding happens.
+    Hard coded default values
 """
 
 
@@ -54,16 +56,16 @@ import logging
 from .version import __version__
 
 
-class HardCodedConfiguration():
+class BaseConfiguration():
 
-    """Base class for configuration gathering.
+    """Base class for configuration gathering. Contains hard coded defaults.
 
-    Attribute access is customized by implemented __getattr__() and
-    __setattr__() methods.
+    Access to options is customized by implementing __getitem__() and
+    __setitem__() methods.
 
     __setattr__() checks well-formedness of input values and logs at
         debug level.
-    __getattr__() raises AttributeError if an option is not set.
+    __getattr__() raises KeyError if an option is not set.
     """
 
     @staticmethod
@@ -86,12 +88,10 @@ class HardCodedConfiguration():
                 raise ValueError("Not an absolute path: {}".format(f))
         return True
 
-    def __init__(self):
-        super().__setattr__("_options", dict())
-        super().__setattr__(
-            "_logger",
-            logging.getLogger(__name__+"."+self.__class__.__name__)
-            )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._options = dict()
+        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         good_form = {
             # Each key is the name of an option to check for good form.
             # Each value is a list of tests to perform.
@@ -108,7 +108,7 @@ class HardCodedConfiguration():
                 (lambda f: f == os.path.abspath(f), "Not an absolute path: {}"),
                 ],
             }
-        super().__setattr__("_good_form", good_form)
+        self._good_form = good_form
         # Save validation for Configuration().__init__().
         validation = {
             # This follows the same structure as good_form.
@@ -122,10 +122,12 @@ class HardCodedConfiguration():
                     "configfile {} isn't readable."),
                 ],
             }
-        super().__setattr__("_validation", validation)
-        self.sources = self.make_sources_list()
-        self.configfile = "/etc/backup"
-        self.dest = "/root/var/backups"
+        self._validation = validation
+        self._logger.debug("START initializing hard coded configuration.")
+        self['sources'] = self.make_sources_list()
+        self['configfile'] = "/etc/backup"
+        self['dest'] = "/root/var/backups"
+        self._logger.debug("DONE initializing hard coded configuration.")
 
     def make_sources_list(self):
         """Return a default list of directories to back up.
@@ -141,13 +143,10 @@ class HardCodedConfiguration():
                 continue
         return sorted(["/"+s for s in sources])
 
-    def __getattr__(self, name):
-        try:
-            return self._options[name]
-        except KeyError:
-            raise AttributeError(name)
+    def __getitem__(self, name):
+        return self._options[name]
 
-    def __setattr__(self, name, value):
+    def __setitem__(self, name, value):
         # Check if input is well formed.
         try:
             for check in self._good_form[name]:
@@ -160,10 +159,10 @@ class HardCodedConfiguration():
             raise
         # Log debug data.
         try:
-            old = " (was {})".format(self.__getattr__(name))
-        except AttributeError:
+            old = " (was {})".format(self[name])
+        except KeyError:
             old = ""
-        self._logger.debug("Option {} = {}{}".format(name, value, old))
+        self._logger.debug("{} = {}{}".format(name, value, old))
         # Actually set the value.
         self._options[name] = value
 
@@ -171,57 +170,71 @@ class HardCodedConfiguration():
         return self._options
 
 
-class BackupEnvironmentCollector(HardCodedConfiguration):
+class EnvironmentReader(BaseConfiguration):
 
     """Override hard-coded configs with environment variables."""
 
-    # This allows unit tests to set a reproducible environment.
-    environ = os.environ
-
-    def __init__(self):
+    def __init__(self, environ=os.environ, **kwargs):
+        self._environ = environ
         # Pull hard-coded defaults.
-        super().__init__()
+        super().__init__(**kwargs)
         # Override them.
+        self._logger.debug("START reading configuration from environment.")
         self.parse_environ()
+        self._logger.debug("DONE reading configuration from environment.")
 
     def parse_environ(self):
-        if 'BACKUP_CONFIGFILE' in self.environ:
-            self.configfile = self.environ['BACKUP_CONFIGFILE']
+        if 'BACKUP_CONFIGFILE' in self._environ:
+            self['configfile'] = self._environ['BACKUP_CONFIGFILE']
 
 
-class BackupConfigParser():
+class PartialArgumentParser(EnvironmentReader):
 
-    """Parse configuration files, fallback on BackupEnvironmentCollector."""
+    """Parse a subset of command line arguments.
 
-    def __init__(self, configfile):
-        pass
-
-
-class BackupArgumentParser(BackupEnvironmentCollector, BackupConfigParser):
-
-    """Parse command line arguments, then the configuration file.
     Although command line arguments override the configuration file,
-    they must be parsed first and saved for later because there might be
-    a --configfile argument present.
-
-    The file to be parsed is the first one found among the following :
-    1. The configfile argument of the;
-    2. The value of the BACKUP_CONFIG_FILE environment variable;
-    3. The hard-coded value.
+    the --configfile argument must be parsed first.
     """
 
-    def __init__(self):
-        # Pull environment configuration.
-        super().__init__()
-        # Parse arguments, save in temporary dict.
-        #TODO
-        # Parse configuration file.
-        BackupConfigParser.__init__(self, self._options['configfile'])
-        # Override options with those saved from the command line arguments.
-        #TODO
+    def __init__(self, **kwargs):
+        # Pull file config, environment, and default configuration.
+        super().__init__(**kwargs)
+        # Parse command line arguments.
+        self._logger.debug("START parsing command line arguments (partial).")
+        self._logger.debug("Nothing to do yet.")
+        self._logger.debug("DONE parsing command line arguments (partial).")
 
 
-class Configuration(BackupArgumentParser):
+class ConfigParser(PartialArgumentParser):
+
+    """Parse configuration files, fallback on EnvironmentReader."""
+
+    def __init__(self, configfile=None, **kwargs):
+        super().__init__(**kwargs)
+        self._logger.debug("START reading configuration from file.")
+        self._logger.debug("Nothing to do yet.")
+        self._logger.debug("DONE reading configuration from file.")
+
+
+class ArgumentParser(ConfigParser):
+
+    """Parse remaining command line arguments.
+
+    Although command line arguments override the configuration file,
+    the --configfile argument must be parsed first. This was done by
+    PartialArgumentParser. This class parses the remaining arguments.
+    """
+
+    def __init__(self, **kwargs):
+        # Pull file config, environment, and default configuration.
+        super().__init__(**kwargs)
+        # Parse command line arguments.
+        self._logger.debug("START parsing command line arguments.")
+        self._logger.debug("Nothing to do yet.")
+        self._logger.debug("DONE parsing command line arguments.")
+
+
+class Configuration(ArgumentParser):
 
     """Collects options from other classes of the config module.
 
@@ -229,10 +242,12 @@ class Configuration(BackupArgumentParser):
         class variable.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._logger.debug("START validating configuration values.")
         for k in dir(self):
             self.validate(k)
+        self._logger.debug("DONE validating configuration values.")
 
     def validate(self, name):
         try:
