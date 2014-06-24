@@ -44,7 +44,6 @@ handlers['memory'].setLevel(logging.INFO)
 
 def config_logging():
     """Configures the root logger."""
-    global handlers
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handlers['stream'])
@@ -56,7 +55,6 @@ def add_file_handler(filename):
     The file name for logging is only known at runtime.
     This function is called after the configuration of backup has been parsed.
     """
-    global handlers
     logger = logging.getLogger()
     handlers['file'] = logging.FileHandler(filename)
     handlers['file'].setFormatter(formatters['file'])
@@ -65,7 +63,6 @@ def add_file_handler(filename):
 
 def move_log_file(dest):
     """Moves the log file to a new location."""
-    global handlers
     h = handlers['file']
     h.acquire()
     try:

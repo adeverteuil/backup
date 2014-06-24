@@ -11,15 +11,15 @@ E_CODES = {
 SSH = "/usr/bin/ssh"
 RSYNC = "/usr/bin/rsync"
 RSYNC_E_CODES = { # From the rsync(1) manpage
-     1 : FatalException("Syntax or usage error"),
-     2 : FatalException("Protocol incompatibility"),
-     3 : FatalException("Errors selecting input/output files, dirs"),
-     4 : FatalException("Requested action not supported: an attempt was made "
-                        "to manipulate 64-bit files on a platform that cannot "
-                        "support them; or an option was specified that is "
-                        "supported by the client and not by the server."),
-     5 : FatalException("Error starting client-server protocol"),
-     6 : rsyncWarning("Daemon unable to append to log-file"),
+    1 : FatalException("Syntax or usage error"),
+    2 : FatalException("Protocol incompatibility"),
+    3 : FatalException("Errors selecting input/output files, dirs"),
+    4 : FatalException("Requested action not supported: an attempt was made "
+                       "to manipulate 64-bit files on a platform that cannot "
+                       "support them; or an option was specified that is "
+                       "supported by the client and not by the server."),
+    5 : FatalException("Error starting client-server protocol"),
+    6 : rsyncWarning("Daemon unable to append to log-file"),
     10 : FatalException("Error in socket I/O"),
     11 : FatalException("Error in file I/O"),
     12 : FatalException("Error in rsync protocol data stream"),

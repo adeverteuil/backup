@@ -117,9 +117,9 @@ class BaseConfiguration():
                 ],
             'configfile': [
                 (lambda f: os.access(f, os.F_OK),
-                    "configfile {} does not exist."),
+                 "configfile {} does not exist."),
                 (lambda f: os.access(f, os.R_OK),
-                    "configfile {} isn't readable."),
+                 "configfile {} isn't readable."),
                 ],
             }
         self._validation = validation
@@ -260,5 +260,6 @@ class Configuration(ArgumentParser):
                     raise ValueError(check[1].format(value))
         except KeyError:
             self._logger.warning("No validation check for "+name)
+
 
 # vim:cc=80
