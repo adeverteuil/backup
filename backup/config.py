@@ -174,8 +174,11 @@ class EnvironmentReader(BaseConfiguration):
 
     """Override hard-coded configs with environment variables."""
 
-    def __init__(self, environ=os.environ, **kwargs):
-        self._environ = environ
+    def __init__(self, environ=None, **kwargs):
+        if not environ:
+            self._environ = os.environ
+        else:
+            self._environ = environ
         # Pull hard-coded defaults.
         super().__init__(**kwargs)
         # Override them.
