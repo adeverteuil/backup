@@ -18,6 +18,17 @@ class TestEngine(EngineSetup):
     def test_init(self):
         r = rsyncWrapper(object())
 
+    @unittest.mock.patch("subprocess.Popen")
+    def test_execute_with_mock(self, mockpopen):
+        mockpopen().stdout = io.StringIO()
+        mockpopen().stderr = io.StringIO()
+        mockpopen.reset_mock()
+        self.assertFalse(mockpopen.called)
+        r = rsyncWrapper(object())
+        r.execute()
+        r.wait()
+        self.assertTrue(mockpopen.called)
+
 
 class TestPipeLogger(EngineSetup):
 

@@ -35,7 +35,7 @@ import subprocess
 import threading
 
 
-class rsyncWrapper(subprocess.Popen):
+class rsyncWrapper:
 
     """Manages an rsync subprocess and threads that log its output streams."""
 
@@ -55,18 +55,18 @@ class rsyncWrapper(subprocess.Popen):
         #TODO use --out-format="%l %f" for tracking biggest files.
         # %l = length of file in bytes
         # %f = filename
-        super().__init__(
+        self.process = subprocess.Popen(
             self.args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             )
         self.loggers = {
             'stdout': PipeLogger(
-                self.stdout,
+                self.process.stdout,
                 logging.getLogger("rsync.stdout").info
                 ),
             'stderr': PipeLogger(
-                self.stderr,
+                self.process.stderr,
                 logging.getLogger("rsync.stderr").warning
                 ),
             }
@@ -76,7 +76,7 @@ class rsyncWrapper(subprocess.Popen):
     def wait(self, timeout=None):
         """Wait on the subprocess and both logger threads."""
         start = time.perf_counter()
-        super().wait(timeout=timeout)
+        self.process.wait(timeout=timeout)
         for logger in self.loggers.values():
             timeleft = time.perf_counter() - start
             start = time.perf_counter()
