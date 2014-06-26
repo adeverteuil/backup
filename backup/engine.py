@@ -42,6 +42,7 @@ class rsyncWrapper(subprocess.Popen):
     def __init__(self, options):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         self._options = options
+        self.args = []
 
     def execute(self):
         """Invoke rsync and manage it's outputs.
@@ -51,6 +52,9 @@ class rsyncWrapper(subprocess.Popen):
         self._logger.debug(
             "Invoking rsync with arguments {}.".format(self.args)
             )
+        #TODO use --out-format="%l %f" for tracking biggest files.
+        # %l = length of file in bytes
+        # %f = filename
         super().__init__(
             self.args,
             stdout=subprocess.PIPE,
@@ -66,7 +70,7 @@ class rsyncWrapper(subprocess.Popen):
                 logging.getLogger("rsync.stderr").warning
                 ),
             }
-        for logger in self.loggers:
+        for logger in self.loggers.values():
             logger.start()
 
     def wait(self, timeout=None):

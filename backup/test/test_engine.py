@@ -1,5 +1,6 @@
 import io
 import unittest
+import unittest.mock
 
 from .basic_setup import BasicSetup
 from ..engine import *
@@ -15,7 +16,7 @@ class EngineSetup(BasicSetup):
 class TestEngine(EngineSetup):
 
     def test_init(self):
-        r = rsyncWrapper()
+        r = rsyncWrapper(object())
 
 
 class TestPipeLogger(EngineSetup):
