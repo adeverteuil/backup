@@ -104,10 +104,7 @@ Unit tests are also provided.
 ::
 
     cd project_dir
-    python -m unittest backup.test.test_config
-    python -m unittest backup.test.test_engine
-
-.. note:: I must write a module to group all tests.
+    python -m unittest
 
 Installing
 ~~~~~~~~~~
