@@ -80,10 +80,31 @@ class TestSnapshot(EngineSetup):
     def test_init(self):
         now = datetime.datetime.now()
         s = Snapshot(self.testdest, "name", "interval")
-        self.assertGreaterEqual(s.get_timestamp(), now)
+        self.assertGreaterEqual(s.timestamp, now)
         self.assertTrue(s.path.startswith(self.testdest))
         self.assertEqual(s.interval, "interval")
         self.assertEqual(s.name, "name")
+
+    def test_set_timestamp(self):
+        t = datetime.datetime(2014, 7, 1, 10, 10)
+        s = Snapshot(self.testdest, "name", "interval")
+        s.timestamp = t
+        self.assertEqual(s.timestamp, t)
+        self.assertTrue(s.path.endswith("2014-07-01T10:10"), msg=s.path)
+
+    def test_find_timestamp_by_index(self):
+        os.chdir(self.testdest)
+        os.mkdir("name")
+        os.chdir("name")
+        for d in range(1, 5):
+            os.mkdir("daily.2014-07-{:02}T00:00".format(d))
+        os.mkdir("hourly.2014-07-01T00:00")
+        os.mkdir("some_random_directory")
+        for d in range(4):
+            s = Snapshot(self.testdest, "name", "daily", d)
+            self.assertEqual(s.timestamp, datetime.datetime(2014, 7, d+1))
+        with self.assertRaises(IndexError):
+            s = Snapshot(self.testdest, "name", "daily", 4)
 
 
 # vim:cc=80

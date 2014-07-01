@@ -145,48 +145,57 @@ class Snapshot:
     be represented.
     """
 
-    timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
+    _timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
 
     def __init__(self, dest, name, interval, index=None):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        self._timestamp = None
         self.name = name
         self.interval = interval
         self.index = index
-        self.get_timestamp()
-        self.path = os.path.join(
-            dest,
-            name,
-            interval+"."+self.get_stimestamp()
+        self.dest = dest
+        self.timestamp  # Raises IndexError if self.index is out of range.
+
+    @property
+    def path(self):
+        path = os.path.join(
+            self.dest,
+            self.name,
+            self.interval+"."+self.stimestamp
             )
+        return path
 
     def get_status(self):
         # Status: blank, locked, dirty, complete, deleting, syncing
         pass
 
-    def get_timestamp(self):
-        """Set the timestamp if not set, and return it."""
-        try:
-            return self.timestamp
-        except AttributeError:
+    @property
+    def timestamp(self):
+        """The date and time at which this backup snapshot was made."""
+        if self._timestamp is None:
             if self.index is None:
-                self.timestamp = datetime.datetime.now()
-                return self.timestamp
+                self._timestamp = datetime.datetime.now()
             else:
                 # Try to find timestamp by index in existing directories.
                 dirs = glob.glob(
                     "{}/{}/{}.*".format(self.dest, self.name, self.interval)
                     )
-                try:
-                    self.timestamp = datetime.datetime.stptime(
-                        dirs[self.index].rsplit(".")[-1],
-                        self.timeformat
-                        )
-                except IndexError:
-                    self.timestamp = datetime.datetime.now()
+                dirs.sort()
+                self._timestamp = datetime.datetime.strptime(
+                    dirs[self.index].rsplit(".")[-1],  # raises IndexError.
+                    self._timeformat
+                    )
+        return self._timestamp
 
-    def get_stimestamp(self):
-        """Return the timestamp as a ISO 8601 string."""
-        return self.get_timestamp().strftime(self.timeformat)
+    @timestamp.setter
+    def timestamp(self, value):
+        assert isinstance(value, datetime.datetime), type(value)
+        self._timestamp = value
+
+    @property
+    def stimestamp(self):
+        """The timestamp as a ISO 8601 string."""
+        return self.timestamp.strftime(self._timeformat)
 
     def delete(self):
         pass
