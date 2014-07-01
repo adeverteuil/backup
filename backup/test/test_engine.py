@@ -106,5 +106,31 @@ class TestSnapshot(EngineSetup):
         with self.assertRaises(IndexError):
             s = Snapshot(self.testdest, "name", "daily", 4)
 
+    def test_locking(self):
+        # Setup
+        s1 = Snapshot(self.testdest, "name", "interval")
+        os.mkdir(os.path.join(self.testdest, "name"))
+        s1.mkdir()
+        s1.acquire()
+
+        # Test existence of lock file.
+        self.assertTrue(os.access(s1.lockfile, os.R_OK), msg=s1.lockfile)
+        # Test acquiring the lock with another snapshot object.
+        with self.assertRaises(RuntimeError):
+            s2 = Snapshot(self.testdest, "name", "interval", 0)
+            s2.acquire()
+        # Attempt to acquire the lock a second time.
+        with self.assertRaises(RuntimeError):
+            s1.acquire()
+        s2.release()
+        # Test context manager.
+        with s2:
+            with self.assertRaises(RuntimeError):
+                s1.acquire()
+        # Test releasing an unlocked lock.
+        with self.assertRaises(FileNotFoundError):
+            s2.release()
+
+
 
 # vim:cc=80

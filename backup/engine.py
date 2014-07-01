@@ -25,16 +25,20 @@ This module provides the following classes:
     rsyncWrapper
         Manages an rsync subprocess and threads that log its output streams.
     PipeLogger
-        Logs lines of text recieved until the end of stream
+        Logs lines of text recieved until the end of stream.
+    Snapshot
+        Abstraction object for a backup snapshot.
 """
 
 
 import datetime
+import errno
 import glob
 import logging
 import os
 import os.path
 import subprocess
+import sys
 import time
 import threading
 
@@ -165,9 +169,22 @@ class Snapshot:
             )
         return path
 
+    @property
+    def lockfile(self):
+        return self.path + ".lock"
+
     def get_status(self):
         # Status: blank, locked, dirty, complete, deleting, syncing
         pass
+
+    def mkdir(self):
+        """Create the snapshot directory on the filesystem."""
+        try:
+            os.mkdir(self.path)
+        except OSError:
+            err = sys.exc_info()[1]
+            if err.errno != errno.EEXIST:
+                raise
 
     @property
     def timestamp(self):
@@ -178,7 +195,11 @@ class Snapshot:
             else:
                 # Try to find timestamp by index in existing directories.
                 dirs = glob.glob(
-                    "{}/{}/{}.*".format(self.dest, self.name, self.interval)
+                    "{}/{}/{}.????-??-??T??:??".format(
+                        self.dest,
+                        self.name,
+                        self.interval
+                        )
                     )
                 dirs.sort()
                 self._timestamp = datetime.datetime.strptime(
@@ -200,17 +221,27 @@ class Snapshot:
     def delete(self):
         pass
 
-    def acquire(self):
-        pass
+    def acquire(self, timeout=None):
+        # Inspired by https://github.com/smontanaro/pylockfile
+        try:
+            os.mkdir(self.lockfile)  # Atomic operation.
+        except OSError:
+            err = sys.exc_info()[1]
+            if err.errno == errno.EEXIST:
+                # Already locked.
+                raise RuntimeError  #TODO raise a more specific error.
+            else:
+                raise
 
     def release(self):
-        pass
+        os.rmdir(self.lockfile)
 
     def __enter__(self):
-        pass
+        self.acquire()
+        return self
 
-    def __exit__(self):
-        pass
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
 
     @staticmethod
     def from_path(path):
