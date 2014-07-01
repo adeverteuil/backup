@@ -29,9 +29,13 @@ This module provides the following classes:
 """
 
 
-import time
+import datetime
+import glob
 import logging
+import os
+import os.path
 import subprocess
+import time
 import threading
 
 
@@ -122,6 +126,91 @@ class PipeLogger(threading.Thread):
                 self.method(line.strip())
             else:
                 return
+
+
+class Snapshot:
+
+    """Abstraction object for a backup snapshot.
+
+    dest -- Path to the root of the backup directory.
+    name -- Name of the backup (usually a host name).
+    interval -- Name of the backup cycle (i. e. hourly, daily, etc.)
+    index -- Index number of the individual snapshot in the cycle.
+
+    The constructor's parameters are components to build the snapshot's path:
+        /dest/name/interval.timestamp
+    If index is None, the timestamp will be the current date and time.
+    If index is a positive integer, existing snapshot directories of the same
+    interval will be sorted and the one at the given index number will
+    be represented.
+    """
+
+    timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
+
+    def __init__(self, dest, name, interval, index=None):
+        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        self.name = name
+        self.interval = interval
+        self.index = index
+        self.get_timestamp()
+        self.path = os.path.join(
+            dest,
+            name,
+            interval+"."+self.get_stimestamp()
+            )
+
+    def get_status(self):
+        # Status: blank, locked, dirty, complete, deleting, syncing
+        pass
+
+    def get_timestamp(self):
+        """Set the timestamp if not set, and return it."""
+        try:
+            return self.timestamp
+        except AttributeError:
+            if self.index is None:
+                self.timestamp = datetime.datetime.now()
+                return self.timestamp
+            else:
+                # Try to find timestamp by index in existing directories.
+                dirs = glob.glob(
+                    "{}/{}/{}.*".format(self.dest, self.name, self.interval)
+                    )
+                try:
+                    self.timestamp = datetime.datetime.stptime(
+                        dirs[self.index].rsplit(".")[-1],
+                        self.timeformat
+                        )
+                except IndexError:
+                    self.timestamp = datetime.datetime.now()
+
+    def get_stimestamp(self):
+        """Return the timestamp as a ISO 8601 string."""
+        return self.get_timestamp().strftime(self.timeformat)
+
+    def delete(self):
+        pass
+
+    def acquire(self):
+        pass
+
+    def release(self):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self):
+        pass
+
+    @staticmethod
+    def from_path(path):
+        """Create a snapshot object from a path name.
+
+        The expected string format is:
+            /path/to/backups/name/interval.yyyy-mm-ddThh:mm:ss
+        """
+        pass
 
 
 # vim:cc=80

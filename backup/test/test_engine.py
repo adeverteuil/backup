@@ -1,3 +1,4 @@
+import datetime
 import io
 import unittest
 import unittest.mock
@@ -72,6 +73,17 @@ class TestPipeLogger(EngineSetup):
             self.assertEqual(
                 cm.output,
                 ["WARNING:test_using_logger:C", "WARNING:test_using_logger:D"])
+
+
+class TestSnapshot(EngineSetup):
+
+    def test_init(self):
+        now = datetime.datetime.now()
+        s = Snapshot(self.testdest, "name", "interval")
+        self.assertGreaterEqual(s.get_timestamp(), now)
+        self.assertTrue(s.path.startswith(self.testdest))
+        self.assertEqual(s.interval, "interval")
+        self.assertEqual(s.name, "name")
 
 
 # vim:cc=80
