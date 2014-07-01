@@ -32,7 +32,8 @@ import tempfile
 import unittest
 
 
-# This is where temporary directories will live for a brief moment.
+# This is where temporary test files and directories will live for a
+# brief moment.
 BASEDIR = os.getcwd()
 
 
@@ -43,21 +44,21 @@ class BasicSetup(unittest.TestCase):
     def setUp(self):
         """Create temporary directories and files for testing purposes."""
         os.chdir(BASEDIR)
-        self.__testsource = tempfile.mkdtemp(prefix="testsource_", dir=BASEDIR)
-        self.__testdest = tempfile.mkdtemp(prefix="testdest_", dir=BASEDIR)
-        self.__configfile = tempfile.mkstemp(
+        self.testsource = tempfile.mkdtemp(prefix="testsource_", dir=BASEDIR)
+        self.testdest = tempfile.mkdtemp(prefix="testdest_", dir=BASEDIR)
+        self.configfile = tempfile.mkstemp(
             prefix="testconfig_",
             dir=BASEDIR, text=True
             )[1]
         n = 20  # Create n files.
         for i in range(1, n+1):
             testfilepath = os.path.join(
-                self.__testsource,
+                self.testsource,
                 "testfile_{}_of_{}".format(i, n),
                 )
             with open(testfilepath, "w") as f:
                 f.write("Test content {} of {}.".format(i, n))
-        with open(self.__configfile, "w") as fh:
+        with open(self.configfile, "w") as fh:
             fh.write(self.generate_config())
 
     def generate_config(self):
@@ -68,8 +69,8 @@ class BasicSetup(unittest.TestCase):
         """
         config = (
             "[backup]\n"
-            "sourcedirs=" + self.__testsource + "\n"
-            "dest=" + self.__testdest + "\n"
+            "sourcedirs=" + self.testsource + "\n"
+            "dest=" + self.testdest + "\n"
             "excludefile=/dev/null\n"
             "filterfile=/dev/null\n"
             "\n"
@@ -78,27 +79,15 @@ class BasicSetup(unittest.TestCase):
             )
         return config
 
-    @property
-    def testsource(self):
-        return self.__testsource
-
-    @property
-    def testdest(self):
-        return self.__testdest
-
-    @property
-    def configfile(self):
-        return self.__configfile
-
     def tearDown(self):
-        shutil.rmtree(self.__testsource)
-        self.__testsource = None
+        shutil.rmtree(self.testsource)
+        self.testsource = None
 
-        shutil.rmtree(self.__testdest)
-        self.__testdest = None
+        shutil.rmtree(self.testdest)
+        self.testdest = None
 
-        os.remove(self.__configfile)
-        self.__configfile = None
+        os.remove(self.configfile)
+        self.configfile = None
 
 
 # vim:cc=80
