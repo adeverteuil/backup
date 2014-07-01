@@ -18,16 +18,10 @@
 #   If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Classes that actually perform the backups are declared within.
+"""This module provides the Snapshot class.
 
-This module provides the following classes:
-
-    rsyncWrapper
-        Manages an rsync subprocess and threads that log its output streams.
-    PipeLogger
-        Logs lines of text recieved until the end of stream.
-    Snapshot
-        Abstraction object for a backup snapshot.
+Snapshot
+    Abstraction object for a backup snapshot.
 """
 
 
@@ -38,10 +32,7 @@ import logging
 import os
 import os.path
 import shutil
-import subprocess
 import sys
-import time
-import threading
 
 
 # Status constants for Snapshot objects.
@@ -51,8 +42,10 @@ SYNCING = 2
 COMPLETE = 3
 DELETING = 4
 DELETED = 5
+_status_count = DELETED+1  # For "assert status in range(_status_count)".
 # Status lookup for logging purposes.
 _status_lookup = {
+    None: "UNSET",
     0: "VOID",
     1: "BLANK",
     2: "SYNCING",
@@ -60,95 +53,6 @@ _status_lookup = {
     4: "DELETING",
     5: "DELETED",
     }
-
-
-class rsyncWrapper:
-
-    """Manages an rsync subprocess and threads that log its output streams."""
-
-    def __init__(self, options):
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        self._options = options
-        self.args = []
-
-    def execute(self):
-        """Invoke rsync and manage its outputs.
-
-        This is where the parent class is initiated.
-        """
-        self._logger.debug(
-            "Invoking rsync with arguments {}.".format(self.args)
-            )
-        #TODO use --out-format="%l %f" for tracking biggest files.
-        # %l = length of file in bytes
-        # %f = filename
-        self.process = subprocess.Popen(
-            self.args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            )
-        self.loggers = {
-            'stdout': PipeLogger(
-                self.process.stdout,
-                logging.getLogger("rsync.stdout").info
-                ),
-            'stderr': PipeLogger(
-                self.process.stderr,
-                logging.getLogger("rsync.stderr").warning
-                ),
-            }
-        for logger in self.loggers.values():
-            logger.start()
-
-    def wait(self, timeout=None):
-        """Wait on the subprocess and both logger threads."""
-        start = time.perf_counter()
-        self.process.wait(timeout=timeout)
-        for logger in self.loggers.values():
-            timeleft = time.perf_counter() - start
-            start = time.perf_counter()
-            if timeout is not None:
-                timeout = timeleft
-            logger.join(timeout=timeout)
-            if logger.is_alive():
-                raise subprocess.TimeoutExpired
-
-
-class PipeLogger(threading.Thread):
-
-    """Logs lines of text read from a stream."""
-
-    def __init__(self, stream, method, **kwargs):
-        """PipeLogger constructor.
-
-        Takes two positional arguments:
-        stream -- a text stream (with a readline() method)
-        method -- a function that takes a string argument
-
-        Typically, stream is either the stdout or stderr stream of a
-        child process. method is a method of a Logger object.
-        Here is a use case:
-            p = subprocess.Popen(...)
-            pl = PipeLogger(
-                p.stdout,
-                logging.getLogger("stdout").info,
-                ... additionnal threading.Thread keyword arguments go here ...
-                )
-        """
-        # TODO: have a way of communicating KeybordInterrupt and such messages
-        # with the main thread.
-        self.stream = stream
-        self.method = method
-        super().__init__(**kwargs)
-
-    def run(self):
-        """Log lines from stream using method until empty read."""
-        while True:
-            line = self.stream.readline()
-            if line:
-                self.method(line.strip())
-            else:
-                return
 
 
 class Snapshot:
@@ -189,12 +93,27 @@ class Snapshot:
 
     def __init__(self, dir, interval, index=None):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        self._timestamp = None
-        self._status = VOID
-        self.interval = interval
-        self.index = index
         self.dir = dir
-        self.timestamp  # Raises IndexError if self.index is out of range.
+        self.interval = interval
+        self._status = None
+        if index is None:
+            self._timestamp = datetime.datetime.now()
+            self.index = 0
+        else:
+            # Try to find timestamp by index in existing directories.
+            dirs = glob.glob(
+                "{}/{}.????-??-??T??:??".format(
+                    self.dir,
+                    self.interval
+                    )
+                )
+            dirs.sort()
+            self._timestamp = datetime.datetime.strptime(
+                dirs[index].rsplit(".")[-1],  # raises IndexError.
+                self._timeformat
+                )
+            self.index = index
+        self.infer_status()
 
     @property
     def path(self):
@@ -249,7 +168,7 @@ class Snapshot:
                     dirs[self.index].rsplit(".")[-1],  # raises IndexError.
                     self._timeformat
                     )
-                self._status = COMPLETE
+                self.infer_status()
         return self._timestamp
 
     @timestamp.setter
@@ -284,7 +203,7 @@ class Snapshot:
 
     @status.setter
     def status(self, value):
-        assert value in (VOID, BLANK, SYNCING, COMPLETE, DELETING, DELETED)
+        assert value in range(_status_count), value
         self._logger.debug(
             "Changing status from {} to {}.".format(
                 _status_lookup[self._status],
@@ -295,9 +214,6 @@ class Snapshot:
             msg = "Cannot change the status of a deleted snapshot."
             raise RuntimeError(msg)
         if value in (SYNCING, DELETING):
-            if not self.is_locked():
-                msg = "Snapshot must be locked to enter this status."
-                raise RuntimeError(msg)
             with open(self.statusfile, "w") as f:
                 f.write(str(value))
         else:
@@ -306,6 +222,25 @@ class Snapshot:
             except FileNotFoundError:
                 pass
         self._status = value
+
+    def infer_status(self):
+        """Infer status by analyzing snapshot directory and status file."""
+        status = None
+        if not os.access(self.path, os.F_OK):
+            status = VOID
+        else:
+            try:
+                with open(self.statusfile) as f:
+                    # This covers the DELETING and SYNCING cases.
+                    status = int(f.read())
+            except FileNotFoundError:
+                if os.listdir(self.path):
+                    status = COMPLETE
+                else:
+                    status = BLANK
+        assert status in range(_status_count)
+        self.status = status
+        return status
 
     def delete(self):
         if self.status == VOID:

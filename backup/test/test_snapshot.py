@@ -67,20 +67,13 @@ class TestSnapshot(BasicSetup):
         self.assertEqual(s.status, VOID)
         s.mkdir()
         self.assertEqual(s.status, BLANK)
-        # Snapshot must be locked to enter SYNCING status.
-        with self.assertRaises(RuntimeError):
-            s.status = SYNCING
-        with s:
-            s.status = SYNCING
-            self.assertEqual(s.status, SYNCING)
-            s.status = COMPLETE
-        # Snapshot must be locked to enter DELETING status.
-        with self.assertRaises(RuntimeError):
-            s.status = DELETING
-        with s:
-            s.status = DELETING
-            self.assertEqual(s.status, DELETING)
-            s.status = DELETED
+        s.status = SYNCING
+        self.assertEqual(s.status, SYNCING)
+        s.status = COMPLETE
+        self.assertEqual(s.status, COMPLETE)
+        s.status = DELETING
+        self.assertEqual(s.status, DELETING)
+        s.status = DELETED
         # Changing the status of a DELETED snapshot should raise an exception.
         for status in (VOID, BLANK, SYNCING, COMPLETE, DELETING):
             with self.assertRaises(RuntimeError):
@@ -95,6 +88,34 @@ class TestSnapshot(BasicSetup):
         s.mkdir()
         with s:
             s.delete()
+
+    def test_existing_dirty_snapshot(self):
+        # If a snapshot is instantiated for which a dirty directory exists,
+        # Snapshot should set the proper status.
+
+        # Create 4 snapshot directories:
+        #   2014-07-01 -- BLANK
+        #   2014-07-02 -- SYNCING
+        #   2014-07-03 -- COMPLETE
+        #   2014-07-04 -- DELETING
+        os.chdir(self.testdest)
+        os.mkdir("daily.2014-07-01T00:00")
+        os.mkdir("daily.2014-07-02T00:00")
+        with open(".daily.2014-07-02T00:00.status", "w") as f:
+            f.write(str(SYNCING))
+        os.mkdir("daily.2014-07-03T00:00")
+        open("daily.2014-07-03T00:00/a", "wb").close()
+        os.mkdir("daily.2014-07-04T00:00")
+        with open(".daily.2014-07-04T00:00.status", "w") as f:
+            f.write(str(DELETING))
+
+        snapshots = []
+        for d in range(4):
+            snapshots.append(Snapshot(self.testdest, "daily", d))
+        self.assertEqual(snapshots[0].status, BLANK)
+        self.assertEqual(snapshots[1].status, SYNCING)
+        self.assertEqual(snapshots[2].status, COMPLETE)
+        self.assertEqual(snapshots[3].status, DELETING)
 
 
 # vim:cc=80
