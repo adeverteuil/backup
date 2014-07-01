@@ -71,6 +71,9 @@ class Snapshot:
     interval will be sorted and the one at the given index number will
     be represented.
 
+    Static methods:
+        from_path(path)
+
     Properties:
         timestamp
         stimestamp -- ISO 8601 string of the timestamp
@@ -85,11 +88,24 @@ class Snapshot:
         index
 
     Methods:
-        delete
-        mkdir
+        infer_status
+        mkdir -- VOID -> BLANK
+        delete -- BLANK, SYNCING, COMPLETE, DELETING -> DELETING
+        acquire
+        release
+        is_locked
     """
 
     _timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
+
+    @staticmethod
+    def from_path(path):
+        """Create a snapshot object from a path name.
+
+        The expected string format is:
+            /path/to/backups/name/interval.yyyy-mm-ddThh:mm:ss
+        """
+        pass
 
     def __init__(self, dir, interval, index=None):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
@@ -139,36 +155,9 @@ class Snapshot:
             )
         return path
 
-    def mkdir(self):
-        """Create the snapshot directory on the filesystem."""
-        if self.status != VOID:
-            msg = "status is {}, must be VOID.".format(self.status)
-            raise RuntimeError(msg)
-        os.mkdir(self.path)
-        self.status = BLANK  # VOID -> BLANK
-        self._logger.debug("Created directory {}.".format(self.path))
-
     @property
     def timestamp(self):
         """The date and time at which this backup snapshot was made."""
-        if self._timestamp is None:
-            if self.index is None:
-                self._timestamp = datetime.datetime.now()
-                self.status = VOID
-            else:
-                # Try to find timestamp by index in existing directories.
-                dirs = glob.glob(
-                    "{}/{}.????-??-??T??:??".format(
-                        self.dir,
-                        self.interval
-                        )
-                    )
-                dirs.sort()
-                self._timestamp = datetime.datetime.strptime(
-                    dirs[self.index].rsplit(".")[-1],  # raises IndexError.
-                    self._timeformat
-                    )
-                self.infer_status()
         return self._timestamp
 
     @timestamp.setter
@@ -186,14 +175,16 @@ class Snapshot:
     def status(self):
         """Status of this Snapshot.
 
-        VOID -> BLANK -> SYNCING -> COMPLETE -> DELETING -> DELETED
+        Normal flow:
+            VOID -> BLANK -> SYNCING -> COMPLETE -> DELETING -> DELETED
 
-        VOID : Snapshot doesn't exist on the filesystem.
-        BLANK : Directory exists and is empty.
-        SYNCING : Synchronization is in progress.
-        COMPLETE : Is safe to link-dest against.
-        DELETING : In the process of being removed from the filesystem.
-        DELETED : Snapshot is deleted and can no longer change status.
+        Return values (compare with module-level constants):
+            VOID : Snapshot doesn't exist on the filesystem.
+            BLANK : Directory exists and is empty.
+            SYNCING : Synchronization is in progress.
+            COMPLETE : Is safe to link-dest against.
+            DELETING : In the process of being removed from the filesystem.
+            DELETED : Snapshot is deleted and can no longer change status.
         """
         if self._status in (SYNCING, DELETING):
             with open(self.statusfile) as f:
@@ -203,6 +194,11 @@ class Snapshot:
 
     @status.setter
     def status(self, value):
+        """Setter for the status property.
+
+        The status SYNCING and DELETING create a statusfile which flags
+        this snapshot as "dirty" and not safe for link-dest.
+        """
         assert value in range(_status_count), value
         self._logger.debug(
             "Changing status from {} to {}.".format(
@@ -242,6 +238,15 @@ class Snapshot:
         self.status = status
         return status
 
+    def mkdir(self):
+        """Create the snapshot directory on the filesystem."""
+        if self.status != VOID:
+            msg = "status is {}, must be VOID.".format(self.status)
+            raise RuntimeError(msg)
+        os.mkdir(self.path)
+        self._logger.debug("Created directory {}.".format(self.path))
+        self.status = BLANK  # VOID -> BLANK
+
     def delete(self):
         if self.status == VOID:
             raise RuntimeError("Deleting a VOID snapshot.")
@@ -279,15 +284,6 @@ class Snapshot:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.release()
-
-    @staticmethod
-    def from_path(path):
-        """Create a snapshot object from a path name.
-
-        The expected string format is:
-            /path/to/backups/name/interval.yyyy-mm-ddThh:mm:ss
-        """
-        pass
 
 
 # vim:cc=80
