@@ -136,15 +136,15 @@ class TestSnapshot(EngineSetup):
         self.assertEqual(s.status, VOID)
         s.mkdir()
         self.assertEqual(s.status, BLANK)
+        # Snapshot must be locked to enter SYNCING status.
         with self.assertRaises(RuntimeError):
-            # Snapshot must be locked to enter SYNCING status.
             s.status = SYNCING
         with s:
             s.status = SYNCING
             self.assertEqual(s.status, SYNCING)
             s.status = COMPLETE
+        # Snapshot must be locked to enter DELETING status.
         with self.assertRaises(RuntimeError):
-            # Snapshot must be locked to enter DELETING status.
             s.status = DELETING
         with s:
             s.status = DELETING
@@ -154,7 +154,16 @@ class TestSnapshot(EngineSetup):
         for status in (VOID, BLANK, SYNCING, COMPLETE, DELETING):
             with self.assertRaises(RuntimeError):
                 s.status = status
+
+    def test_delete(self):
+        # Try to delete a VOID snapshot.
         s = Snapshot(self.testdest, "interval")
+        with self.assertRaises(RuntimeError):
+            with s:
+                s.delete()
+        s.mkdir()
+        with s:
+            s.delete()
 
 
 # vim:cc=80

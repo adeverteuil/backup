@@ -37,6 +37,7 @@ import glob
 import logging
 import os
 import os.path
+import shutil
 import subprocess
 import sys
 import time
@@ -275,6 +276,10 @@ class Snapshot:
         DELETING : In the process of being removed from the filesystem.
         DELETED : Snapshot is deleted and can no longer change status.
         """
+        if self._status in (SYNCING, DELETING):
+            with open(self.statusfile) as f:
+                filestatus = int(f.read())
+                assert filestatus == self._status, _status_lookup[filestatus]
         return self._status
 
     @status.setter
@@ -303,12 +308,12 @@ class Snapshot:
         self._status = value
 
     def delete(self):
+        if self.status == VOID:
+            raise RuntimeError("Deleting a VOID snapshot.")
         self._logger.info("Deleting {}.".format(self.path))
-        # Mark snapshot as dirty, status as deleting, or something.
-        with self:
-            self.status = DELETING
-            shutil.rmtree(self.path)
-            self.status = VOID
+        self.status = DELETING
+        shutil.rmtree(self.path)
+        self.status = DELETED
         self._logger.info("Deletion complete.")
 
     def acquire(self):
@@ -338,11 +343,7 @@ class Snapshot:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            # Leave the lock in place if an exception was raised.
-            return False  # Exception will be re-raised in the calling context.
-        else:
-            self.release()
+        self.release()
 
     @staticmethod
     def from_path(path):
