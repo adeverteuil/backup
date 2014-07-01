@@ -2,6 +2,8 @@ class rsyncWarning(Warning): pass
 class FatalException(Exception): pass
 class LockfileException(FatalException): pass
 class ResourceUnavailableException(FatalException): pass
+
+
 E_CODES = {
     "success" : 0,
     "fatal" : 1,
@@ -10,7 +12,8 @@ E_CODES = {
     }
 SSH = "/usr/bin/ssh"
 RSYNC = "/usr/bin/rsync"
-RSYNC_E_CODES = { # From the rsync(1) manpage
+RSYNC_E_CODES = {
+    # From the rsync(1) manpage
     1 : FatalException("Syntax or usage error"),
     2 : FatalException("Protocol incompatibility"),
     3 : FatalException("Errors selecting input/output files, dirs"),

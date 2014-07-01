@@ -18,7 +18,7 @@
 #   If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Actually performs the backups.
+"""Classes that actually perform the backups are declared within.
 
 This module provides the following classes:
 
@@ -45,7 +45,7 @@ class rsyncWrapper:
         self.args = []
 
     def execute(self):
-        """Invoke rsync and manage it's outputs.
+        """Invoke rsync and manage its outputs.
 
         This is where the parent class is initiated.
         """
@@ -89,7 +89,7 @@ class rsyncWrapper:
 
 class PipeLogger(threading.Thread):
 
-    """Logs lines of text recieved until the end of stream."""
+    """Logs lines of text read from a stream."""
 
     def __init__(self, stream, method, **kwargs):
         """PipeLogger constructor.
@@ -98,16 +98,18 @@ class PipeLogger(threading.Thread):
         stream -- a text stream (with a readline() method)
         method -- a function that takes a string argument
 
-        Typically, stream is either the stdout or stderr of a
-        subprocess. method belongs to a Logger object. A PipeLogger
-        might be instantiated thus:
+        Typically, stream is either the stdout or stderr stream of a
+        child process. method is a method of a Logger object.
+        Here is a use case:
             p = subprocess.Popen(...)
             pl = PipeLogger(
                 p.stdout,
                 logging.getLogger("stdout").info,
-                ... threading.Thread keyword arguments go here ...
+                ... additionnal threading.Thread keyword arguments go here ...
                 )
         """
+        # TODO: have a way of communicating KeybordInterrupt and such messages
+        # with the main thread.
         self.stream = stream
         self.method = method
         super().__init__(**kwargs)

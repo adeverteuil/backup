@@ -1,5 +1,5 @@
 #   Alexandre's backup script
-#   Copyright (C) 2010  Alexandre A. de Verteuil  {{{
+#   Copyright (C) 2010  Alexandre A. de Verteuil
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -14,7 +14,29 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.
 #   If not, see <http://www.gnu.org/licenses/>.
-#}}}
+
+
+"""Logging configuration.
+
+This module configures three logging handlers:
+
+    1.  A stream handler that writes to stdout and stderr;
+    2.  A memory handler that memorizes output from the rsync subprocess for
+        post-processing;
+    3.  A file handler that writes to a log file.
+
+Logging verbosity is controlled set according to the command line parameters.
+
+There are also the following module level functions:
+    add_file_handler():
+        This function is called when the destination directory is known,
+        which happens after parsing the configuration file and command
+        line arguments.
+    move_file_handler(dest):
+        This function is called when a backup is completed and the log file
+        can be added to the snapshot's directory.
+"""
+
 
 import io
 import sys
@@ -22,7 +44,8 @@ import shutil
 import logging
 import logging.config
 
-formatters = {
+
+_formatters = {
     'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
     'memory': logging.Formatter("%(message)s"),
     'file': logging.Formatter(
@@ -31,22 +54,23 @@ formatters = {
     }
 
 
-handlers = {
+_handlers = {
     'stream': logging.StreamHandler(stream=sys.stdout),
     # Create an in-memory stream handler for output post-processing,
     # only adding it to the logger if option -q is used.
     'memory': logging.StreamHandler(stream=io.StringIO()),
     }
-handlers['stream'].setFormatter(formatters['stream'])
-handlers['stream'].setLevel(logging.INFO)
-handlers['memory'].setFormatter(formatters['memory'])
-handlers['memory'].setLevel(logging.INFO)
+_handlers['stream'].setFormatter(_formatters['stream'])
+_handlers['stream'].setLevel(logging.INFO)
+_handlers['memory'].setFormatter(_formatters['memory'])
+_handlers['memory'].setLevel(logging.INFO)
+
 
 def config_logging():
     """Configures the root logger."""
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    logger.addHandler(handlers['stream'])
+    logger.addHandler(_handlers['stream'])
 
 
 def add_file_handler(filename):
@@ -56,20 +80,25 @@ def add_file_handler(filename):
     This function is called after the configuration of backup has been parsed.
     """
     logger = logging.getLogger()
-    handlers['file'] = logging.FileHandler(filename)
-    handlers['file'].setFormatter(formatters['file'])
-    logger.addHandler(handlers['file'])
+    _handlers['file'] = logging.FileHandler(filename)
+    _handlers['file'].setFormatter(_formatters['file'])
+    logger.addHandler(_handlers['file'])
 
 
 def move_log_file(dest):
-    """Moves the log file to a new location."""
-    h = handlers['file']
+    """Moves the log file to a new location.
+
+    Closes the file handler, then changes its location according to dest.
+    """
+    h = _handlers['file']
     h.acquire()
     try:
         h.close()
         shutil.move(h.baseFilename, dest)
         h.baseFilename = dest
+        # The new file will be automatically opened when a method to
+        # handle a record is called.
     finally:
         h.release()
 
-# vim:fdm=marker:fdl=0:fdc=3
+# vim:cc=80
