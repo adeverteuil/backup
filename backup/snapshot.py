@@ -20,8 +20,17 @@
 
 """This module provides the Snapshot class.
 
-Snapshot
-    Abstraction object for a backup snapshot.
+Classes:
+    Snapshot
+        Abstraction object for a backup snapshot.
+
+Constants indicating the status of a Snapshot instance:
+    VOID
+    BLANK
+    SYNCING
+    COMPLETE
+    DELETING
+    DELETED
 """
 
 
@@ -33,6 +42,9 @@ import os
 import os.path
 import shutil
 import sys
+
+
+from .locking import Lockable
 
 
 # Status constants for Snapshot objects.
@@ -55,7 +67,7 @@ _status_lookup = {
     }
 
 
-class Snapshot:
+class Snapshot(Lockable):
 
     """Abstraction object for a backup snapshot.
 
@@ -255,35 +267,6 @@ class Snapshot:
         shutil.rmtree(self.path)
         self.status = DELETED
         self._logger.info("Deletion complete.")
-
-    def acquire(self):
-        try:
-            os.mkdir(self.lockfile)  # Atomic operation.
-        except OSError:
-            err = sys.exc_info()[1]
-            if err.errno == errno.EEXIST:
-                # Already locked.
-                raise RuntimeError  #TODO raise a more specific error.
-            else:
-                raise
-
-    def release(self):
-        os.rmdir(self.lockfile)
-
-    def is_locked(self):
-        try:
-            self.acquire()
-            self.release()
-            return False
-        except RuntimeError:  #XXX Will be changed for a different exception.
-            return True
-
-    def __enter__(self):
-        self.acquire()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.release()
 
 
 # vim:cc=80

@@ -1,9 +1,12 @@
 import datetime
 import io
+import queue
+import threading
 import unittest
 
 from .basic_setup import BasicSetup
 from ..snapshot import *
+from ..locking import *
 
 
 class TestSnapshot(BasicSetup):
@@ -46,19 +49,41 @@ class TestSnapshot(BasicSetup):
         # Test existence of lock file.
         self.assertTrue(os.access(s1.lockfile, os.R_OK), msg=s1.lockfile)
         # Test acquiring the lock with another snapshot object.
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(AlreadyLocked):
             s2 = Snapshot(self.testdest, "interval", 0)
             s2.acquire()
-        # Attempt to acquire the lock a second time.
-        with self.assertRaises(RuntimeError):
-            s1.acquire()
-        s2.release()
+        # Attempt to acquire the lock a second time from another thread.
+        def grab_lock(lockable, q):
+            try:
+                lockable.acquire()
+            except Exception as err:
+                q.put(err)
+            else:
+                q.put(None)
+        with self.assertRaises(AlreadyLocked):
+            # do the test here.
+            q = queue.Queue()
+            t = threading.Thread(
+                target=grab_lock,
+                args=(s1, q),
+                )
+            t.start()
+            err = q.get()
+            if err is not None:
+                raise err
+        # Test breaking a lock.
+        self.assertTrue(s2.is_locked())
+        self.assertFalse(s2.i_am_locking())
+        with self.assertRaises(NotMyLock):
+            s2.release()
+        s2.break_lock()
+        self.assertFalse(s2.is_locked())
         # Test context manager.
         with s2:
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(AlreadyLocked):
                 s1.acquire()
         # Test releasing an unlocked lock.
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(AlreadyUnlocked):
             s2.release()
 
     def test_status_cycle(self):
