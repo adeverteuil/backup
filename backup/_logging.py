@@ -38,10 +38,11 @@ There are also the following module level functions:
 """
 
 
+import argparse
 import io
+import logging
 import sys
 import shutil
-import logging
 
 
 _formatters = {
@@ -60,13 +61,22 @@ _handlers = {
     'memory': logging.StreamHandler(stream=io.StringIO()),
     }
 _handlers['stream'].setFormatter(_formatters['stream'])
-_handlers['stream'].setLevel(logging.INFO)
+_handlers['stream'].setLevel(logging.WARNING)
 _handlers['memory'].setFormatter(_formatters['memory'])
 _handlers['memory'].setLevel(logging.INFO)
 
 
 def config_logging():
-    """Configures the root logger."""
+    """Configures the root logger and adds handlers in early configuration."""
+    # Create an argument parser that will only act on the verbosity option.
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--verbose", "-v", action="count")
+    options, extra_args = parser.parse_known_args()
+    if options.verbose:
+        if options.verbose >= 2:
+            _handlers['stream'].setLevel(logging.DEBUG)
+        elif options.verbose == 1:
+            _handlers['stream'].setLevel(logging.INFO)
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logger.addHandler(_handlers['stream'])

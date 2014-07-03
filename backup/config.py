@@ -153,7 +153,9 @@ class PartialArgumentParser(EnvironmentReader):
         if args is None:
             args = sys.argv[1:]
         self._logger.debug("START parsing command line arguments (partial).")
-        parser = argparse.ArgumentParser()
+        # The --help option is added again later when all arguments are
+        # added to parser.
+        parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("--configfile", "-c",
                             help="Use this file rather than the default.",
                             type=open,
@@ -165,7 +167,8 @@ class PartialArgumentParser(EnvironmentReader):
         args.clear()
         for arg in extra_args:
             args.append(arg)
-        self.argumentparser = parser
+        self._argumentparser = parser
+        self._argumentoptions = options
         self._logger.debug("DONE parsing command line arguments (partial).")
 
 
@@ -196,8 +199,30 @@ class ArgumentParser(ConfigParser):
         super().__init__(args=args, **kwargs)
         # Parse command line arguments.
         self._logger.debug("START parsing command line arguments.")
-        parser = self.argumentparser
-        parser.parse_args(args)
+        parser = self._argumentparser  # Declared in PartialArgumentParser.
+        parser.add_argument("--help", "-h",
+            action="help",
+            help="Show this help and exit.",
+            )
+        parser.add_argument("--version",
+            action="version",
+            version="%(prog)s {}".format(__version__),
+            help="Show program's version number and exit.",
+            )
+        parser.add_argument("host",
+            nargs="*",
+            help=("List of hosts to do a backup of. Hosts are defined through "
+                  "configuration files in /etc/backup.d. If no hosts are "
+                  "specified, all hosts are backed up sequentially."),
+            )
+        # The verbose argument has already been acted upon in _logging.
+        # It is added here only for its help message.
+        parser.add_argument("--verbose", "-v",
+            action="count",
+            help=("Set verbosity to INFO. This option may be repeated once for"
+                  " verbosity level DEBUG."),
+            )
+        options = parser.parse_args(args, self._argumentoptions)
         self._logger.debug("DONE parsing command line arguments.")
 
 
