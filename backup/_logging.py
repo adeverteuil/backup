@@ -39,6 +39,7 @@ There are also the following module level functions:
 
 
 import argparse
+import atexit
 import io
 import logging
 import sys
@@ -80,6 +81,7 @@ def config_logging():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     logger.addHandler(_handlers['stream'])
+    atexit.register(logging.shutdown)
 
 
 def add_file_handler(filename):
