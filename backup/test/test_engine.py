@@ -6,14 +6,7 @@ from .basic_setup import BasicSetup
 from ..engine import *
 
 
-class EngineSetup(BasicSetup):
-
-    """Override BasicSetup's methods for added functionnality."""
-
-    pass
-
-
-class TestEngine(EngineSetup):
+class TestEngine(BasicSetup):
 
     def test_init(self):
         r = rsyncWrapper(object())
@@ -30,7 +23,7 @@ class TestEngine(EngineSetup):
         self.assertTrue(mockpopen.called)
 
 
-class TestPipeLogger(EngineSetup):
+class TestPipeLogger(BasicSetup):
 
     def test_init(self):
         buffer = []

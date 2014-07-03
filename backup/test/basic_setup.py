@@ -39,10 +39,10 @@ BASEDIR = os.getcwd()
 
 class BasicSetup(unittest.TestCase):
 
-    """Dummy TestCase with basic setup to be inherited."""
+    """Base TestCase with basic setup to be inherited."""
 
     def setUp(self):
-        """Create temporary directories and files for testing purposes."""
+        """Create temporary directories and files for unit tests."""
         os.chdir(BASEDIR)
         self.testsource = tempfile.mkdtemp(prefix="testsource_", dir=BASEDIR)
         self.testdest = tempfile.mkdtemp(prefix="testdest_", dir=BASEDIR)

@@ -3,14 +3,7 @@ from .basic_setup import BasicSetup
 from ..config import *
 
 
-class ConfigSetup(BasicSetup):
-
-    """Override BasicSetup's methods for added functionnality."""
-
-    pass
-
-
-class TestBaseConfiguration(ConfigSetup):
+class TestBaseConfiguration(BasicSetup):
 
     def test_init(self):
         c = BaseConfiguration()
@@ -28,7 +21,7 @@ class TestBaseConfiguration(ConfigSetup):
             self.assertIn(d, c['sources'])
 
 
-class TestEnvironmentReader(ConfigSetup):
+class TestEnvironmentReader(BasicSetup):
 
     def test_init(self):
         c = EnvironmentReader()
@@ -46,7 +39,7 @@ class TestEnvironmentReader(ConfigSetup):
         self.assertEqual(c['configfile'], self.configfile)
 
 
-class TestPartialArgumentParser(ConfigSetup):
+class TestPartialArgumentParser(BasicSetup):
 
     def test_init(self):
         c = PartialArgumentParser()
@@ -54,7 +47,7 @@ class TestPartialArgumentParser(ConfigSetup):
         self.assertIsInstance(c, EnvironmentReader)
 
 
-class TestConfigParser(ConfigSetup):
+class TestConfigParser(BasicSetup):
 
     def test_init(self):
         c = ConfigParser(configfile=self.configfile)
@@ -63,7 +56,7 @@ class TestConfigParser(ConfigSetup):
         self.assertIsInstance(c, PartialArgumentParser)
 
 
-class TestArgumentParser(ConfigSetup):
+class TestArgumentParser(BasicSetup):
 
     def test_init(self):
         c = ArgumentParser()
@@ -73,7 +66,7 @@ class TestArgumentParser(ConfigSetup):
         self.assertIsInstance(c, ConfigParser)
 
 
-class TestConfiguration(ConfigSetup):
+class TestConfiguration(BasicSetup):
 
     @unittest.skip
     def test_init(self):
