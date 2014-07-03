@@ -49,10 +49,12 @@ value of an option, the following sources are looked at in order:
 """
 
 
+import argparse
 import collections.abc
 import logging
 import os
 import os.path
+import sys
 
 from .version import __version__
 
@@ -76,7 +78,8 @@ class BaseConfiguration(collections.abc.MutableMapping):
         self['dest'] = "/root/var/backups"
         self._logger.debug("DONE initializing hard coded configuration.")
 
-    def make_sources_list(self):
+    @staticmethod
+    def make_sources_list():
         """Return a default list of directories to back up.
 
         Start with the list of direct children of "/".
@@ -143,12 +146,26 @@ class PartialArgumentParser(EnvironmentReader):
     the --configfile argument must be parsed first.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, args=None, **kwargs):
         # Pull file config, environment, and default configuration.
         super().__init__(**kwargs)
         # Parse command line arguments.
+        if args is None:
+            args = sys.argv[1:]
         self._logger.debug("START parsing command line arguments (partial).")
-        self._logger.debug("Nothing to do yet.")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--configfile", "-c",
+                            help="Use this file rather than the default.",
+                            type=open,
+                            )
+        options, extra_args = parser.parse_known_args(args)
+        # Replace contents of args with that of extra_args for further
+        # parsing by parent backup.config.ArgumentParser class.
+        # It's a mutable type, so change in place.
+        args.clear()
+        for arg in extra_args:
+            args.append(arg)
+        self.argumentparser = parser
         self._logger.debug("DONE parsing command line arguments (partial).")
 
 
@@ -172,12 +189,15 @@ class ArgumentParser(ConfigParser):
     PartialArgumentParser. This class parses the remaining arguments.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, args=None, **kwargs):
+        if not args:
+            args = sys.argv[1:]
         # Pull file config, environment, and default configuration.
-        super().__init__(**kwargs)
+        super().__init__(args=args, **kwargs)
         # Parse command line arguments.
         self._logger.debug("START parsing command line arguments.")
-        self._logger.debug("Nothing to do yet.")
+        parser = self.argumentparser
+        parser.parse_args(args)
         self._logger.debug("DONE parsing command line arguments.")
 
 
