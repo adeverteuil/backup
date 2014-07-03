@@ -51,6 +51,7 @@ value of an option, the following sources are looked at in order:
 
 import argparse
 import collections.abc
+import configparser
 import logging
 import os
 import os.path
@@ -158,9 +159,10 @@ class PartialArgumentParser(EnvironmentReader):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("--configfile", "-c",
                             help="Use this file rather than the default.",
-                            type=open,
                             )
         options, extra_args = parser.parse_known_args(args)
+        if options.configfile:
+            self['configfile'] = options.configfile
         # Replace contents of args with that of extra_args for further
         # parsing by parent backup.config.ArgumentParser class.
         # It's a mutable type, so change in place.
@@ -178,8 +180,12 @@ class ConfigParser(PartialArgumentParser):
 
     def __init__(self, configfile=None, **kwargs):
         super().__init__(**kwargs)
+        if configfile is not None:
+            self['configfile'] = configfile
         self._logger.debug("START reading configuration from file.")
-        self._logger.debug("Nothing to do yet.")
+        config = configparser.ConfigParser()
+        with open(self['configfile']) as configfile:
+            config.read_file(configfile)
         self._logger.debug("DONE reading configuration from file.")
 
 

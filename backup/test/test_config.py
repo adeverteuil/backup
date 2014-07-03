@@ -73,7 +73,7 @@ class TestConfigParser(BasicSetup):
 class TestArgumentParser(BasicSetup):
 
     def test_init(self):
-        c = ArgumentParser()
+        c = ArgumentParser(args=["-c", self.configfile])
         self.assertIsInstance(c, BaseConfiguration)
         self.assertIsInstance(c, EnvironmentReader)
         self.assertIsInstance(c, PartialArgumentParser)
