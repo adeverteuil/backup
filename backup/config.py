@@ -49,80 +49,27 @@ value of an option, the following sources are looked at in order:
 """
 
 
+import collections.abc
+import logging
 import os
 import os.path
-import logging
 
 from .version import __version__
 
 
-class BaseConfiguration():
+class BaseConfiguration(collections.abc.MutableMapping):
 
-    """Base class for configuration gathering. Contains hard coded defaults.
+    """Base class for configuration gathering.
 
-    Access to options is customized by implementing __getitem__() and
-    __setitem__() methods.
-
-    __setattr__() checks well-formedness of input values and logs at
-        debug level.
-    __getattr__() raises KeyError if an option is not set.
+    Contains hard coded defaults.
+    Implements the MutableMapping API.
+    Validates input.
     """
-
-    @staticmethod
-    def _validate_sources(sources):
-        for f in sources:
-            if not os.access(f, os.F_OK):
-                raise ValueError(
-                    "Source file or directory {} does not exist.".format(f)
-                    )
-            if not os.access(f, os.R_OK):
-                raise ValueError(
-                    "Source file or directory {} is inaccessible.".format(f)
-                    )
-        return True
-
-    @staticmethod
-    def _well_formed_sources(sources):
-        for f in sources:
-            if f != os.path.abspath(f):
-                raise ValueError("Not an absolute path: {}".format(f))
-        return True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._options = dict()
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        good_form = {
-            # Each key is the name of an option to check for good form.
-            # Each value is a list of tests to perform.
-            # Each test is a tuple of a test function that returns a boolean
-            # and, for lambda functions, an error message.
-            'sources': [
-                (lambda l: list(l), "Sources must be listable : {}."),
-                (self._well_formed_sources,),
-                ],
-            'configfile': [
-                (lambda f: f == os.path.abspath(f), "Not an absolute path: {}"),
-                ],
-            'dest': [
-                (lambda f: f == os.path.abspath(f), "Not an absolute path: {}"),
-                ],
-            }
-        self._good_form = good_form
-        # Save validation for Configuration().__init__().
-        validation = {
-            # This follows the same structure as good_form.
-            'sources': [
-                (self._validate_sources,)
-                ],
-            'configfile': [
-                (lambda f: os.access(f, os.F_OK),
-                 "configfile {} does not exist."),
-                (lambda f: os.access(f, os.R_OK),
-                 "configfile {} isn't readable."),
-                ],
-            }
-        self._validation = validation
         self._logger.debug("START initializing hard coded configuration.")
         self['sources'] = self.make_sources_list()
         self['configfile'] = "/etc/backup"
@@ -147,27 +94,24 @@ class BaseConfiguration():
         return self._options[name]
 
     def __setitem__(self, name, value):
-        # Check if input is well formed.
-        try:
-            for check in self._good_form[name]:
-                if not check[0](value):
-                    raise ValueError(check[1].format(value))
-        except KeyError as err:
-            err.args = (
-                "No well-formedness check found for option {}.".format(name),
-                )
-            raise
-        # Log debug data.
-        try:
+        # Log debug information.
+        if name in self:
             old = " (was {})".format(self[name])
-        except KeyError:
+        else:
             old = ""
         self._logger.debug("{} = {}{}".format(name, value, old))
         # Actually set the value.
         self._options[name] = value
 
-    def __dir__(self):
-        return self._options
+    def __delitem__(self, key):
+        del self_options[key]
+
+    def __iter__(self):
+        for k in self._options.keys():
+            yield k
+
+    def __len__(self):
+        return len(self._options)
 
 
 class EnvironmentReader(BaseConfiguration):
@@ -248,18 +192,8 @@ class Configuration(ArgumentParser):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._logger.debug("START validating configuration values.")
-        for k in dir(self):
-            self.validate(k)
+        self._logger.debug("Nothing to do yet.")
         self._logger.debug("DONE validating configuration values.")
-
-    def validate(self, name):
-        try:
-            value = self._options[name]
-            for check in self._validation[name]:
-                if not check[0](value):
-                    raise ValueError(check[1].format(value))
-        except KeyError:
-            self._logger.warning("No validation check for "+name)
 
 
 # vim:cc=80

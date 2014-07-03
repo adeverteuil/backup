@@ -1,4 +1,6 @@
 import unittest
+import unittest.mock
+
 from .basic_setup import BasicSetup
 from ..config import *
 
@@ -19,6 +21,18 @@ class TestBaseConfiguration(BasicSetup):
             self.assertNotIn(d, c['sources'])
         for d in ("/etc", "/home", "/usr"):
             self.assertIn(d, c['sources'])
+
+    def test_dict_api(self):
+        c = BaseConfiguration()
+        options = {'a': "value_a", 'b': "value_b"}
+        c._options = options.copy()
+        self.assertDictEqual(dict(c), options)
+        self.assertSequenceEqual(c.keys(), options.keys())
+        self.assertTrue('a' in c)
+        self.assertFalse('c' in c)
+        self.assertTrue(list(c.items()))
+        c['c'] = "value_c"
+        self.assertEqual(c['c'], "value_c")
 
 
 class TestEnvironmentReader(BasicSetup):
