@@ -42,7 +42,6 @@ import io
 import sys
 import shutil
 import logging
-import logging.config
 
 
 _formatters = {
