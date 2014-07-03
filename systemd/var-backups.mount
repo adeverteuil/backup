@@ -1,0 +1,10 @@
+[Unit]
+Description=Read-only backups tree
+Before=make_readonly@%p.service
+Requires=make_readonly@%p.service
+
+
+[Mount]
+What=/root/var/backups
+Where=/var/backups
+Options=bind

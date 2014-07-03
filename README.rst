@@ -34,6 +34,12 @@ This has to be done in two steps because a bind mount has the same
 options as the origin filesystem even if you specify other options. i.e.
 ``-o bind,ro`` will result in a writable filesystem.
 
+``systemd`` unit files that accomplish this are provided in the project
+directory under "systemd". For a local installation, these files may
+be placed in ``/etc/systemd/system``. Package maintainers may install
+these files in ``/usr/lib/systemd/system``. Then, the command ``systemctl
+enable var-backups.automount`` must be executed as root.
+
 File "NOT_MOUNTED"
 ------------------
 
@@ -109,5 +115,6 @@ Unit tests are also provided.
 Installing
 ~~~~~~~~~~
 
-No installation at this point in development. I will be maintaining an
-ArchLinux PKGBUILD when version 1.0 is out.
+The command line script may be installed for development purposes. In  .
+your virtualenv, use ``pip install -e .``. I will be maintaining an     .
+ArchLinux PKGBUILD when version 1.0 is out                             .

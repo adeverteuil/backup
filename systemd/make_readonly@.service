@@ -1,0 +1,8 @@
+[Unit]
+Description=Make bind mount /%I read-only
+Requires=%i.mount
+After=%i.mount
+
+[Service]
+Type=oneshot
+ExecStart=/bin/mount -o remount,bind,ro /%I

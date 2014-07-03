@@ -1,0 +1,10 @@
+[Unit]
+Description=var-backups.automount
+Before=local-fs.target var-backups.mount umount.target
+After=-.mount
+
+[Automount]
+Where=/var/backups
+
+[Install]
+WantedBy=local-fs.target
