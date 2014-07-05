@@ -26,8 +26,8 @@ this package's other modules.
 
 
 import os
-import shutil
 import os.path
+import shutil
 import tempfile
 import unittest
 

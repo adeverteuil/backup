@@ -23,13 +23,10 @@
 
 import logging
 
-from .config import Configuration
-from . import _logging
+from .config import *
 
 
 def main():
-    # No need for a __name__ == "__main__" test. This entry_point is
-    # declared in the scripts section of setup.py.
     c = Controller()
 
 
@@ -38,6 +35,7 @@ class Controller:
     """Makes sense of configuration options and orchestrates backups."""
 
     def __init__(self):
+        logging.getLogger().addHandler(handlers['stream'])
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         opt = Configuration().configure()
 

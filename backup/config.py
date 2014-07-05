@@ -73,7 +73,7 @@ DEFAULTS = {
     }
 
 
-_formatters = {
+formatters = {
     'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
     'memory': logging.Formatter("%(message)s"),
     'file': logging.Formatter(
@@ -82,16 +82,16 @@ _formatters = {
     }
 
 
-_handlers = {
+handlers = {
     'stream': logging.StreamHandler(stream=sys.stdout),
     # Create an in-memory stream handler for output post-processing,
     # only adding it to the logger if option -q is used.
     'memory': logging.StreamHandler(stream=io.StringIO()),
     }
-_handlers['stream'].setFormatter(_formatters['stream'])
-_handlers['stream'].setLevel(logging.WARNING)
-_handlers['memory'].setFormatter(_formatters['memory'])
-_handlers['memory'].setLevel(logging.INFO)
+handlers['stream'].setFormatter(formatters['stream'])
+handlers['stream'].setLevel(logging.WARNING)
+handlers['memory'].setFormatter(formatters['memory'])
+handlers['memory'].setLevel(logging.INFO)
 
 
 class Configuration:
@@ -111,27 +111,9 @@ class Configuration:
         self.environ = environ if environ is not None else os.environ
         self.config = configparser.ConfigParser(defaults=DEFAULTS)
         self.argumentparser = argparse.ArgumentParser(add_help=False)
+        self._configure_argumentparser()
 
-    def configure(self):
-        """Executes all the configurations tasks in the right order.
-
-        Returns the ConfigParser object with all the collected options.
-        """
-        self.parse_environ()
-        self.parse_args()
-        self.do_early_logging_config()
-        self.read_config()
-        self.process_remaining_args()
-        return self.config
-
-    def parse_environ(self):
-        """Overrides some defaults with environment variables."""
-        if 'BACKUP_CONFIGFILE' in self.environ:
-            self.config['DEFAULT']['configfile'] = \
-                self.environ['BACKUP_CONFIGFILE']
-
-    def parse_args(self):
-        """Adds arguments to the ArgumentParser instance and parses args."""
+    def _configure_argumentparser(self):
         parser = self.argumentparser
         parser.add_argument("--help", "-h",
             # The only change from the default is a capital S and a full stop.
@@ -157,21 +139,45 @@ class Configuration:
                   "configuration files in /etc/backup.d. If no hosts are "
                   "specified, all defined hosts are backed up sequentially."),
             )
-        self.args = parser.parse_args(self.argv)
+
+    def configure(self):
+        """Executes all the configurations tasks in the right order.
+
+        Returns the ConfigParser object with all the collected options.
+        """
+        self.parse_environ()
+        self.parse_args()
+        self.do_early_logging_config()
+        self.read_config()
+        self.process_remaining_args()
+        return self.config
+
+    def parse_environ(self):
+        """Overrides some defaults with environment variables."""
+        if 'BACKUP_CONFIGFILE' in self.environ:
+            self.config['DEFAULT']['configfile'] = \
+                self.environ['BACKUP_CONFIGFILE']
+
+    def parse_args(self):
+        """Adds arguments to the ArgumentParser instance and parses args."""
+        self.args = self.argumentparser.parse_args(self.argv)
 
     def do_early_logging_config(self):
         """Configures early logging according to the --verbose option."""
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
-        logger.addHandler(_handlers['stream'])
+        # The handler will be configured, but not added to the Logger. This
+        # must be done in backup.controller.main() so that logging will not
+        # interfere with unit tests.
+        #logger.addHandler(_handlers['stream'])
         atexit.register(logging.shutdown)
         lvl = "WARNING"
         if self.args.verbose:
             if self.args.verbose >= 2:
-                _handlers['stream'].setLevel(logging.DEBUG)
+                handlers['stream'].setLevel(logging.DEBUG)
                 lvl = "DEBUG"
             elif self.args.verbose == 1:
-                _handlers['stream'].setLevel(logging.INFO)
+                handlers['stream'].setLevel(logging.INFO)
                 lvl = "INFO"
         self._logger.debug("Log level set to {}".format(lvl))
 
