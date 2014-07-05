@@ -68,7 +68,7 @@ class BasicSetup(unittest.TestCase):
         to the tests to conduct.
         """
         config = (
-            "[backup]\n"
+            "[DEFAULT]\n"
             "sourcedirs=" + self.testsource + "\n"
             "dest=" + self.testdest + "\n"
             "excludefile=/dev/null\n"

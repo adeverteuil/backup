@@ -65,5 +65,12 @@ class TestConfiguration(BasicSetup):
             c.do_early_logging_config()
         self.assertIn("Log level set to DEBUG", cm.output[0])
 
+    def test_read_config(self):
+        c = Configuration(argv=[])
+        c.parse_args()
+        c.args.configfile = self.configfile
+        c.read_config()
+        self.assertEqual(c.config['DEFAULT']['dest'], self.testdest)
+
 
 # vim:cc=80
