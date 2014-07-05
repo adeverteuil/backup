@@ -25,7 +25,6 @@ This module configures three logging handlers:
         post-processing;
     3.  A file handler that writes to a log file.
 
-Logging verbosity is controlled set according to the command line parameters.
 
 There are also the following module level functions:
     add_file_handler():
@@ -38,50 +37,8 @@ There are also the following module level functions:
 """
 
 
-import argparse
-import atexit
-import io
 import logging
-import sys
 import shutil
-
-
-_formatters = {
-    'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
-    'memory': logging.Formatter("%(message)s"),
-    'file': logging.Formatter(
-        "%(asctime)s  %(name)s %(levelname)s: %(message)s",
-        ),
-    }
-
-
-_handlers = {
-    'stream': logging.StreamHandler(stream=sys.stdout),
-    # Create an in-memory stream handler for output post-processing,
-    # only adding it to the logger if option -q is used.
-    'memory': logging.StreamHandler(stream=io.StringIO()),
-    }
-_handlers['stream'].setFormatter(_formatters['stream'])
-_handlers['stream'].setLevel(logging.WARNING)
-_handlers['memory'].setFormatter(_formatters['memory'])
-_handlers['memory'].setLevel(logging.INFO)
-
-
-def config_logging():
-    """Configures the root logger and adds handlers in early configuration."""
-    # Create an argument parser that will only act on the verbosity option.
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--verbose", "-v", action="count")
-    options, extra_args = parser.parse_known_args()
-    if options.verbose:
-        if options.verbose >= 2:
-            _handlers['stream'].setLevel(logging.DEBUG)
-        elif options.verbose == 1:
-            _handlers['stream'].setLevel(logging.INFO)
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(_handlers['stream'])
-    atexit.register(logging.shutdown)
 
 
 def add_file_handler(filename):

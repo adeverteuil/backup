@@ -20,38 +20,29 @@
 
 """Get configuration options.
 
-This module declares the following classes, which are in linear hierarchy all
-inheriting from BaseConfiguration:
+This module defines the Configuration class which handles all the configuration
+and parsing tasks.
 
-    BaseConfiguration
-        Contains default hard coded values for all options.
-    EnvironmentReader
-        Reads configuration from environment variables.
-    PartialArgumentParser
-        Parses command line arguments for the configfile option only.
-    ConfigParser
-        Parses configuration files.
-    ArgumentParser
-        Parses command line arguments.
-    Configuration
-        Calls all the previously named classes and produces a complete
-        options set. Some command line arguments override options found
-        in configuration files which in turn override defaults.
+Option values are the first ones found in the following places:
 
-The backup script only needs to instantiate Configuration. When requesting the
-value of an option, the following sources are looked at in order:
-
-    Constructor arguments (useful for unit testing)
     Command line arguments
     Configuration files
     Environment variables
     Hard coded default values
+
+The Configuration instance configures two logging handlers:
+
+    1.  A stream handler that writes to stdout and stderr;
+    2.  A memory handler that memorizes output from the rsync subprocess for
+        post-processing;
 """
 
 
 import argparse
+import atexit
 import collections.abc
 import configparser
+import io
 import logging
 import os
 import os.path
@@ -60,153 +51,90 @@ import sys
 from .version import __version__
 
 
-class BaseConfiguration(collections.abc.MutableMapping):
+def _make_sources_list():
+    """Return a default list of directories to back up.
 
-    """Base class for configuration gathering.
-
-    Contains hard coded defaults.
-    Implements the MutableMapping API.
-    Validates input.
+    Start with the list of direct children of "/".
+    Remove virtual filesystems from the list.
     """
+    sources = os.listdir('/')
+    for d in ("sys", "proc", "dev", "lost+found"):
+        try:
+            sources.remove(d)
+        except ValueError:
+            continue
+    return ":".join(sorted(["/"+s for s in sources]))
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._options = dict()
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        self._logger.debug("START initializing hard coded configuration.")
-        self['sources'] = self.make_sources_list()
-        self['configfile'] = "/etc/backup"
-        self['dest'] = "/root/var/backups"
-        self._logger.debug("DONE initializing hard coded configuration.")
 
-    @staticmethod
-    def make_sources_list():
-        """Return a default list of directories to back up.
+DEFAULTS = {
+    'sources': _make_sources_list(),
+    'configfile': "/etc/backup",
+    'dest': "/root/var/backups",
+    }
 
-        Start with the list of direct children of "/".
-        Remove virtual filesystems from the list.
+
+_formatters = {
+    'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
+    'memory': logging.Formatter("%(message)s"),
+    'file': logging.Formatter(
+        "%(asctime)s  %(name)s %(levelname)s: %(message)s",
+        ),
+    }
+
+
+_handlers = {
+    'stream': logging.StreamHandler(stream=sys.stdout),
+    # Create an in-memory stream handler for output post-processing,
+    # only adding it to the logger if option -q is used.
+    'memory': logging.StreamHandler(stream=io.StringIO()),
+    }
+_handlers['stream'].setFormatter(_formatters['stream'])
+_handlers['stream'].setLevel(logging.WARNING)
+_handlers['memory'].setFormatter(_formatters['memory'])
+_handlers['memory'].setLevel(logging.INFO)
+
+
+class Configuration:
+
+    """Collects options from command line arguments and configuration files."""
+
+    def __init__(self, argv=None, environ=None):
+        """Instantiates ConfigParser with defaults and ArgumentParser.
+
+        Parameters:
+        argv -- If not None, will be parsed instead of sys.argv[1:].
+        environ -- If not None, will be used insted of os.environ.
         """
-        sources = os.listdir('/')
-        for d in ("sys", "proc", "dev", "lost+found"):
-            try:
-                sources.remove(d)
-            except ValueError:
-                continue
-        return sorted(["/"+s for s in sources])
+        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        self.argv = argv if argv is not None else sys.argv[1:]
+        self.args = None  # This will hold the return value of parse_args().
+        self.environ = environ if environ is not None else os.environ
+        self.config = configparser.ConfigParser(defaults=DEFAULTS)
+        self.argumentparser = argparse.ArgumentParser(add_help=False)
 
-    def __getitem__(self, name):
-        return self._options[name]
+    def configure(self):
+        """Executes all the configurations tasks in the right order.
 
-    def __setitem__(self, name, value):
-        # Log debug information.
-        if name in self:
-            old = " (was {})".format(self[name])
-        else:
-            old = ""
-        self._logger.debug("{} = {}{}".format(name, value, old))
-        # Actually set the value.
-        self._options[name] = value
-
-    def __delitem__(self, key):
-        del self_options[key]
-
-    def __iter__(self):
-        for k in self._options.keys():
-            yield k
-
-    def __len__(self):
-        return len(self._options)
-
-
-class EnvironmentReader(BaseConfiguration):
-
-    """Override hard-coded configs with environment variables."""
-
-    def __init__(self, environ=None, **kwargs):
-        if not environ:
-            self._environ = os.environ
-        else:
-            self._environ = environ
-        # Pull hard-coded defaults.
-        super().__init__(**kwargs)
-        # Override them.
-        self._logger.debug("START reading configuration from environment.")
+        Returns the ConfigParser object with all the collected options.
+        """
         self.parse_environ()
-        self._logger.debug("DONE reading configuration from environment.")
+        self.parse_args()
+        self.do_early_logging_config()
+        self.read_config()
+        self.process_remaining_args()
+        return self.config
 
     def parse_environ(self):
-        if 'BACKUP_CONFIGFILE' in self._environ:
-            self['configfile'] = self._environ['BACKUP_CONFIGFILE']
+        """Overrides some defaults with environment variables."""
+        if 'BACKUP_CONFIGFILE' in self.environ:
+            self.config['DEFAULT']['configfile'] = \
+                self.environ['BACKUP_CONFIGFILE']
 
-
-class PartialArgumentParser(EnvironmentReader):
-
-    """Parse a subset of command line arguments.
-
-    Although command line arguments override the configuration file,
-    the --configfile argument must be parsed first.
-    """
-
-    def __init__(self, args=None, **kwargs):
-        # Pull file config, environment, and default configuration.
-        super().__init__(**kwargs)
-        # Parse command line arguments.
-        if args is None:
-            args = sys.argv[1:]
-        self._logger.debug("START parsing command line arguments (partial).")
-        # The --help option is added again later when all arguments are
-        # added to parser.
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("--configfile", "-c",
-                            help="Use this file rather than the default.",
-                            )
-        options, extra_args = parser.parse_known_args(args)
-        if options.configfile:
-            self['configfile'] = options.configfile
-        # Replace contents of args with that of extra_args for further
-        # parsing by parent backup.config.ArgumentParser class.
-        # It's a mutable type, so change in place.
-        args.clear()
-        for arg in extra_args:
-            args.append(arg)
-        self._argumentparser = parser
-        self._argumentoptions = options
-        self._logger.debug("DONE parsing command line arguments (partial).")
-
-
-class ConfigParser(PartialArgumentParser):
-
-    """Parse configuration files, fallback on EnvironmentReader."""
-
-    def __init__(self, configfile=None, **kwargs):
-        super().__init__(**kwargs)
-        if configfile is not None:
-            self['configfile'] = configfile
-        self._logger.debug("START reading configuration from file.")
-        config = configparser.ConfigParser()
-        with open(self['configfile']) as configfile:
-            config.read_file(configfile)
-        self._logger.debug("DONE reading configuration from file.")
-
-
-class ArgumentParser(ConfigParser):
-
-    """Parse remaining command line arguments.
-
-    Although command line arguments override the configuration file,
-    the --configfile argument must be parsed first. This was done by
-    PartialArgumentParser. This class parses the remaining arguments.
-    """
-
-    def __init__(self, args=None, **kwargs):
-        if not args:
-            args = sys.argv[1:]
-        # Pull file config, environment, and default configuration.
-        super().__init__(args=args, **kwargs)
-        # Parse command line arguments.
-        self._logger.debug("START parsing command line arguments.")
-        parser = self._argumentparser  # Declared in PartialArgumentParser.
+    def parse_args(self):
+        """Adds arguments to the ArgumentParser instance and parses args."""
+        parser = self.argumentparser
         parser.add_argument("--help", "-h",
+            # The only change from the default is a capital S and a full stop.
             action="help",
             help="Show this help and exit.",
             )
@@ -215,36 +143,53 @@ class ArgumentParser(ConfigParser):
             version="%(prog)s {}".format(__version__),
             help="Show program's version number and exit.",
             )
-        parser.add_argument("host",
-            nargs="*",
-            help=("List of hosts to do a backup of. Hosts are defined through "
-                  "configuration files in /etc/backup.d. If no hosts are "
-                  "specified, all hosts are backed up sequentially."),
-            )
-        # The verbose argument has already been acted upon in _logging.
-        # It is added here only for its help message.
         parser.add_argument("--verbose", "-v",
             action="count",
             help=("Set verbosity to INFO. This option may be repeated once for"
                   " verbosity level DEBUG."),
             )
-        options = parser.parse_args(args, self._argumentoptions)
-        self._logger.debug("DONE parsing command line arguments.")
+        parser.add_argument("--configfile", "-c",
+                            help="Use this file rather than the default.",
+                            )
+        parser.add_argument("host",
+            nargs="*",
+            help=("List of hosts to do a backup of. Hosts are defined through "
+                  "configuration files in /etc/backup.d. If no hosts are "
+                  "specified, all defined hosts are backed up sequentially."),
+            )
+        self.args = parser.parse_args(self.argv)
 
+    def do_early_logging_config(self):
+        """Configures early logging according to the --verbose option."""
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(_handlers['stream'])
+        atexit.register(logging.shutdown)
+        lvl = "WARNING"
+        if self.args.verbose:
+            if self.args.verbose >= 2:
+                _handlers['stream'].setLevel(logging.DEBUG)
+                lvl = "DEBUG"
+            elif self.args.verbose == 1:
+                _handlers['stream'].setLevel(logging.INFO)
+                lvl = "INFO"
+        self._logger.debug("Log level set to {}".format(lvl))
 
-class Configuration(ArgumentParser):
+    def read_config(self):
+        """Finds and reads the config files. Uses the --configfile option."""
+        self._logger.debug("START reading configuration from file.")
+        if self.args.configfile:
+            configfile = self.args.configfile
+        else:
+            configfile = self.config['DEFAULT']['configfile']
+        with open(configfile) as fh:
+            self.config.read_file(fh)
+        self._logger.debug("DONE reading configuration from file.")
 
-    """Collects options from other classes of the config module.
-
-    validate(name) performs validation checks according to the validation
-        class variable.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._logger.debug("START validating configuration values.")
-        self._logger.debug("Nothing to do yet.")
-        self._logger.debug("DONE validating configuration values.")
+    def process_remaining_args(self):
+        """Parses remaining arguments and overrides some config values."""
+        # There is nothing to do at the moment.
+        pass
 
 
 # vim:cc=80

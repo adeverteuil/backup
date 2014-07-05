@@ -30,7 +30,6 @@ from . import _logging
 def main():
     # No need for a __name__ == "__main__" test. This entry_point is
     # declared in the scripts section of setup.py.
-    _logging.config_logging()
     c = Controller()
 
 
@@ -40,7 +39,7 @@ class Controller:
 
     def __init__(self):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        opt = Configuration()
+        opt = Configuration().configure()
 
 
 # vim:cc=80
