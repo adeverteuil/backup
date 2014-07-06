@@ -75,12 +75,26 @@ class rsyncWrapper:
         args += sourcedirs
         return args
 
-    def sync_to(self, dest):
-        """Invoke rsync and manage its outputs.
+    def sync_to(self, dest, linkdest=None):
+        """Invoke rsync and log its outputs.
 
-        This is where the parent class is initiated.
+        All the information rsyncWrapper needs to build the arguments list is
+        contained in the config object recieved as it's constructor argument,
+        except dest and link-dest.
+
+        Parameters:
+            dest -- The destination directory.
+            linkdest -- If not None, the directory to hardlink unchanged
+                files from.
         """
-        args = self.args + [dest]
+        if hasattr(self, "process"):
+            raise RuntimeError("sync-to was called already before.")
+        args = self.args
+        if linkdest is not None:
+            # Insert rather than append because the source directories are
+            # already appended to the args list.
+            args.insert(1, "--link-dest={}".format(linkdest))
+        args.append(dest)
         self._logger.debug(
             "Invoking rsync with arguments {}.".format(args)
             )

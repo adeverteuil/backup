@@ -47,6 +47,25 @@ class TestEngine(BasicSetup):
         r.sync_to(self.testdest)
         r.wait()
         self.assertTrue(mockpopen.called)
+        with self.assertRaises(RuntimeError):
+            r.sync_to(self.testdest)
+        r = rsyncWrapper(self.minimal_options)
+        r.sync_to(self.testdest, "/foo/link-dest")
+        r.wait()
+        self.assertListEqual(
+            mockpopen.call_args[0][0],  # The first non-keyword argument.
+            [
+                "/usr/bin/rsync",
+                "--link-dest=/foo/link-dest",
+                "--delete",
+                "--archive",
+                "--one-file-system",
+                "--partial-dir=.rsync-partial",
+                "--out-format=%l %f",
+                self.testsource,
+                self.testdest,
+                ]
+            )
 
     def test_args(self):
         r = rsyncWrapper(self.minimal_options)
