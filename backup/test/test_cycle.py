@@ -48,3 +48,20 @@ class TestCycle(BasicSetup):
             sorted(os.listdir(self.testsource)),
             sorted(os.listdir(dest))
             )
+
+    def test_build_snapshots_list(self):
+        os.chdir(self.testdest)
+        os.mkdir("daily.2014-07-01T00:00")
+        os.mkdir("daily.2014-07-02T00:00")
+        open("daily.2014-07-02T00:00/file", "w").close()
+        cycle = Cycle(self.testdest, "daily")
+        self.assertEqual(
+            [os.path.basename(s.path) for s in cycle.snapshots],
+            sorted(os.listdir(self.testdest))
+            )
+        self.assertEqual(
+            [s.status for s in cycle.snapshots],
+            [BLANK, COMPLETE]
+            )
+        cycle = Cycle(self.testdest, "hourly")
+        self.assertEqual(cycle.snapshots, [])

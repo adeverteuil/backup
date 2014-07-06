@@ -39,12 +39,14 @@ class Cycle(Lockable):
         self.dir = dir
         self.interval = interval
         self.snapshots = []
+        self._build_snapshots_list()
         self.path = os.path.join(dir)
         self.lockfile = os.path.join(dir, "."+interval+".lock")
 
-    def _make_snapshots_list(self):
-        for file in glob.glob("{}/{}.*".format(self.dir, self.interval)):
-            pass
+    def _build_snapshots_list(self):
+        dirs = sorted(glob.glob("{}/{}.*".format(self.dir, self.interval)))
+        for dir in dirs:
+            self.snapshots.append(Snapshot.from_path(dir))
 
     @staticmethod
     def _cp_la(src, dst):
