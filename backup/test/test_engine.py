@@ -9,6 +9,14 @@ from ..engine import *
 
 class TestEngine(BasicSetup):
 
+    def setUp(self):
+        super().setUp()
+        self.minimal_options = {
+            'rsync': "/usr/bin/rsync",
+            'sourcedirs': self.testsource,
+            'dest': self.testdest,
+            }
+
     def test_init(self):
         r = rsyncWrapper(object())
 
@@ -18,10 +26,35 @@ class TestEngine(BasicSetup):
         mockpopen().stderr = io.StringIO()
         mockpopen.reset_mock()
         self.assertFalse(mockpopen.called)
-        r = rsyncWrapper(object())
+        r = rsyncWrapper(self.minimal_options)
         r.execute()
         r.wait()
         self.assertTrue(mockpopen.called)
+
+    def test_args(self):
+        r = rsyncWrapper(self.minimal_options)
+        expected = ["/usr/bin/rsync", "--delete", "--archive",
+            "--one-file-system", "--partial-dir=.rsync-partial",
+            "--out-format=%l %f", self.testsource, self.testdest]
+        self.assertEqual(r.args, expected)
+
+        options = {'bwlimit': "30", 'sourcehost': "root@machine"}
+        options.update(self.minimal_options)
+        expected = expected[0:6]
+        expected += ["--bwlimit=30", "root@machine:"+self.testsource]
+        expected += [self.testdest]
+        r = rsyncWrapper(options)
+        self.assertEqual(r.args, expected)
+
+    def test_execute(self):
+        r = rsyncWrapper(self.minimal_options)
+        r.execute()
+        r.wait()
+        r.close_pipes()
+        self.assertListEqual(
+            sorted(os.listdir(self.testsource)),
+            sorted(os.listdir(self.testdest))
+            )
 
 
 class TestPipeLogger(BasicSetup):

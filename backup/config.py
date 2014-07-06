@@ -70,6 +70,7 @@ DEFAULTS = {
     'sources': _make_sources_list(),
     'configfile': "/etc/backup",
     'dest': "/root/var/backups",
+    'rsync': "/usr/bin/rsync",
     }
 
 

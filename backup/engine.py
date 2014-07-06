@@ -26,8 +26,6 @@ This module provides the following classes:
         Manages an rsync subprocess and threads that log its output streams.
     PipeLogger
         Logs lines of text recieved until the end of stream.
-    Snapshot
-        Abstraction object for a backup snapshot.
 """
 
 
@@ -45,26 +43,48 @@ class rsyncWrapper:
 
     def __init__(self, options):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        self._options = options
-        self.args = []
+        self.options = options
         # This event is passed to PipeLogger threads. While waiting for the
         # subprocess to finish, the main thread should handle KeyboardInterrupt
         # and set() it before re-raising. This will cause the threads to die.
         self.interrupt_event = threading.Event()
+
+    @property
+    def args(self):
+        options = self.options
+        args = [
+            options['rsync'],
+            "--delete",
+            "--archive",
+            "--one-file-system",
+            "--partial-dir=.rsync-partial",
+            "--out-format=%l %f",
+            ]
+        if 'bwlimit' in options:
+            args.append("--bwlimit={}".format(options['bwlimit']))
+        #TODO --exclude_from and --filter files
+        #TODO --link-dest
+        sourcedirs = options['sourcedirs'].split(":")
+        if 'sourcehost' in options:
+            # Transform this:  ["dir1", "dir2", "dir3"]
+            # into this: ["sourcehost:dir1", ":dir2", ":dir3"]
+            sourcedirs = [":"+dir for dir in sourcedirs]
+            sourcedirs[0] = options['sourcehost']+sourcedirs[0]
+        args += sourcedirs
+        args.append(options['dest'])
+        return args
 
     def execute(self):
         """Invoke rsync and manage its outputs.
 
         This is where the parent class is initiated.
         """
+        args = self.args
         self._logger.debug(
-            "Invoking rsync with arguments {}.".format(self.args)
+            "Invoking rsync with arguments {}.".format(args)
             )
-        #TODO use --out-format="%l %f" for tracking biggest files.
-        # %l = length of file in bytes
-        # %f = filename
         self.process = subprocess.Popen(
-            self.args,
+            args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             )
@@ -95,6 +115,12 @@ class rsyncWrapper:
             logger.join(timeout=timeout)
             if logger.is_alive():
                 raise subprocess.TimeoutExpired
+
+    def close_pipes(self):
+        """Close the stdout and stderr streams of the subprocess."""
+        if hasattr(self, "process"):
+            self.process.stdout.close()
+            self.process.stderr.close()
 
 
 class PipeLogger(threading.Thread):

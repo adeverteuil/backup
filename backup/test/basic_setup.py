@@ -45,6 +45,9 @@ class BasicSetup(unittest.TestCase):
         """Create temporary directories and files for unit tests."""
         os.chdir(BASEDIR)
         self.testsource = tempfile.mkdtemp(prefix="testsource_", dir=BASEDIR)
+        # Append a / to testsource so that rsync will back up the contents
+        # of it instead of testsource itself.
+        self.testsource += "/"
         self.testdest = tempfile.mkdtemp(prefix="testdest_", dir=BASEDIR)
         self.configfile = tempfile.mkstemp(
             prefix="testconfig_",
@@ -54,10 +57,10 @@ class BasicSetup(unittest.TestCase):
         for i in range(1, n+1):
             testfilepath = os.path.join(
                 self.testsource,
-                "testfile_{}_of_{}".format(i, n),
+                "testfile_{:02}_of_{:02}".format(i, n),
                 )
             with open(testfilepath, "w") as f:
-                f.write("Test content {} of {}.".format(i, n))
+                f.write("Test content {:02} of {:02}.".format(i, n))
         with open(self.configfile, "w") as fh:
             fh.write(self.generate_config())
 
