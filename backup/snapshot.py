@@ -288,8 +288,5 @@ class Snapshot(Lockable):
         self.status = DELETED
         self._logger.info("Deletion complete.")
 
-    def sync(self):
-        pass
-
 
 # vim:cc=80

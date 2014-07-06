@@ -25,6 +25,7 @@ Cycle
 """
 
 
+import datetime
 import logging
 import os.path
 
@@ -52,6 +53,7 @@ class Cycle(Lockable):
         attributes.
         """
         # src and dst should be snapshots that I can lock maybe?
+        pass
 
     def delete(self, index):
         """Delete the snapshot at the specified index."""
@@ -69,16 +71,26 @@ class Cycle(Lockable):
         """
         pass
 
-    def create_new_snapshot(self):
+    def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""
         snapshot = Snapshot(self.dir, self.interval)
         self.snapshots.insert(0, snapshot)
         msg = "Creating a new snapshot at {}.".format(snapshot.path)
         self._logger.info(msg)
-        snapshot.mkdir()
         with snapshot:
             #TODO syncing
-            snapshot.sync()
+            snapshot.mkdir()
+            snapshot.status = SYNCING
+            try:
+                engine.sync_to(snapshot.path)
+                engine.wait()
+            except KeyboardInterrupt:
+                engine.interrupt_event.set()
+                raise
+            finally:
+                engine.close_pipes()
+            snapshot.status = COMPLETE
+            snapshot.timestamp = datetime.datetime.now()
 
 
 # vim:cc=80

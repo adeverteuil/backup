@@ -150,7 +150,6 @@ class Configuration:
         self._parse_args()
         self._do_early_logging_config()
         self._read_config()
-        self._process_remaining_args()
         return self.config
 
     def _parse_environ(self):

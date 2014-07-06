@@ -21,13 +21,13 @@ class TestEngine(BasicSetup):
         r = rsyncWrapper(object())
 
     @unittest.mock.patch("subprocess.Popen")
-    def test_execute_with_mock(self, mockpopen):
+    def test_sync_to_with_mock(self, mockpopen):
         mockpopen().stdout = io.StringIO()
         mockpopen().stderr = io.StringIO()
         mockpopen.reset_mock()
         self.assertFalse(mockpopen.called)
         r = rsyncWrapper(self.minimal_options)
-        r.execute()
+        r.sync_to(self.testdest)
         r.wait()
         self.assertTrue(mockpopen.called)
 
@@ -35,20 +35,19 @@ class TestEngine(BasicSetup):
         r = rsyncWrapper(self.minimal_options)
         expected = ["/usr/bin/rsync", "--delete", "--archive",
             "--one-file-system", "--partial-dir=.rsync-partial",
-            "--out-format=%l %f", self.testsource, self.testdest]
+            "--out-format=%l %f", self.testsource]
         self.assertEqual(r.args, expected)
 
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
         options.update(self.minimal_options)
         expected = expected[0:6]
         expected += ["--bwlimit=30", "root@machine:"+self.testsource]
-        expected += [self.testdest]
         r = rsyncWrapper(options)
         self.assertEqual(r.args, expected)
 
-    def test_execute(self):
+    def test_sync_to(self):
         r = rsyncWrapper(self.minimal_options)
-        r.execute()
+        r.sync_to(self.testdest)
         r.wait()
         r.close_pipes()
         self.assertListEqual(

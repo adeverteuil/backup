@@ -51,6 +51,11 @@ class rsyncWrapper:
 
     @property
     def args(self):
+        """Construct args list.
+
+        The last item of the list -- the destination directory -- is left out.
+        It will be passed as a parameter of the sync_to() method.
+        """
         options = self.options
         args = [
             options['rsync'],
@@ -71,15 +76,14 @@ class rsyncWrapper:
             sourcedirs = [":"+dir for dir in sourcedirs]
             sourcedirs[0] = options['sourcehost']+sourcedirs[0]
         args += sourcedirs
-        args.append(options['dest'])
         return args
 
-    def execute(self):
+    def sync_to(self, dest):
         """Invoke rsync and manage its outputs.
 
         This is where the parent class is initiated.
         """
-        args = self.args
+        args = self.args + [dest]
         self._logger.debug(
             "Invoking rsync with arguments {}.".format(args)
             )
