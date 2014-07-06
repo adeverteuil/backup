@@ -1,4 +1,5 @@
 import io
+import threading
 import unittest
 import unittest.mock
 
@@ -37,8 +38,8 @@ class TestPipeLogger(BasicSetup):
             buffer.append(line)
         stdout = io.StringIO("A\nB\n")
         stderr = io.StringIO("C\nD")
-        p1 = PipeLogger(stdout, method)
-        p2 = PipeLogger(stderr, method)
+        p1 = PipeLogger(stdout, method, threading.Event())
+        p2 = PipeLogger(stderr, method, threading.Event())
         p1.start()
         p2.start()
         p1.join()
@@ -50,8 +51,8 @@ class TestPipeLogger(BasicSetup):
         logger.propagate = False
         stdout = io.StringIO("A\nB\n")
         stderr = io.StringIO("C\nD")
-        p1 = PipeLogger(stdout, logger.info)
-        p2 = PipeLogger(stderr, logger.warning)
+        p1 = PipeLogger(stdout, logger.info, threading.Event())
+        p2 = PipeLogger(stderr, logger.warning, threading.Event())
         with self.assertLogs(logger, logging.INFO) as cm:
             p1.start()
             p1.join()
@@ -65,6 +66,23 @@ class TestPipeLogger(BasicSetup):
             self.assertEqual(
                 cm.output,
                 ["WARNING:test_using_logger:C", "WARNING:test_using_logger:D"])
+
+    def test_interrupt_event(self):
+        r, w = os.pipe()
+        e = threading.Event()
+        lock = threading.Lock()
+        m = unittest.mock.Mock()
+        with open(r) as rf, open(w, "w") as wf:
+            p = PipeLogger(rf, m, e)
+            p.start()
+            wf.write("1\n")
+            wf.flush()
+            # The thread is now blocked, waiting for the next line.
+            e.set() # The thread will return before trying to read line 2.
+            wf.write("2\n")
+            wf.flush()
+            p.join()
+            self.assertEqual(rf.readline(), "2\n")
 
 
 # vim:cc=80

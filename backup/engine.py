@@ -47,6 +47,10 @@ class rsyncWrapper:
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         self._options = options
         self.args = []
+        # This event is passed to PipeLogger threads. While waiting for the
+        # subprocess to finish, the main thread should handle KeyboardInterrupt
+        # and set() it before re-raising. This will cause the threads to die.
+        self.interrupt_event = threading.Event()
 
     def execute(self):
         """Invoke rsync and manage its outputs.
@@ -67,11 +71,13 @@ class rsyncWrapper:
         self.loggers = {
             'stdout': PipeLogger(
                 self.process.stdout,
-                logging.getLogger("rsync.stdout").info
+                logging.getLogger("rsync.stdout").info,
+                self.interrupt_event,
                 ),
             'stderr': PipeLogger(
                 self.process.stderr,
-                logging.getLogger("rsync.stderr").warning
+                logging.getLogger("rsync.stderr").warning,
+                self.interrupt_event,
                 ),
             }
         for logger in self.loggers.values():
@@ -95,12 +101,14 @@ class PipeLogger(threading.Thread):
 
     """Logs lines of text read from a stream."""
 
-    def __init__(self, stream, method, **kwargs):
+    def __init__(self, stream, method, interrupt_event, **kwargs):
         """PipeLogger constructor.
 
         Takes two positional arguments:
         stream -- a text stream (with a readline() method)
         method -- a function that takes a string argument
+        interrupt_event -- a threading.Event() that causes the thread to exit
+            when it is set.
 
         Typically, stream is either the stdout or stderr stream of a
         child process. method is a method of a Logger object.
@@ -112,15 +120,14 @@ class PipeLogger(threading.Thread):
                 ... additionnal threading.Thread keyword arguments go here ...
                 )
         """
-        # TODO: have a way of communicating KeybordInterrupt and such messages
-        # with the main thread.
         self.stream = stream
         self.method = method
+        self.interrupt_event = interrupt_event
         super().__init__(**kwargs)
 
     def run(self):
         """Log lines from stream using method until empty read."""
-        while True:
+        while not self.interrupt_event.is_set():
             line = self.stream.readline()
             if line:
                 self.method(line.strip())
