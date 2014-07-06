@@ -125,21 +125,25 @@ class Snapshot(Lockable):
         self.interval = interval
         self._status = None
         if index is None:
-            self._timestamp = datetime.datetime.now()
+            self._timestamp = None
             self.index = 0
         else:
             # Try to find timestamp by index in existing directories.
             dirs = glob.glob(
-                "{}/{}.????-??-??T??:??".format(
+                "{}/{}.*".format(
                     self.dir,
                     self.interval
                     )
                 )
             dirs.sort()
-            self._timestamp = datetime.datetime.strptime(
-                dirs[index].rsplit(".")[-1],  # raises IndexError.
-                self._timeformat
-                )
+            dirs[index]  # raises IndexError.
+            if dirs[index].endswith(".0"):
+                self._timestamp = None
+            else:
+                self._timestamp = datetime.datetime.strptime(
+                    dirs[index].rsplit(".")[-1],
+                    self._timeformat
+                    )
             self.index = index
         self.infer_status()
 
@@ -175,13 +179,29 @@ class Snapshot(Lockable):
     @timestamp.setter
     def timestamp(self, value):
         assert isinstance(value, datetime.datetime), type(value)
+        oldpath = self.path
+        oldlock = self.lockfile
+        oldstatus = self.statusfile
         self._timestamp = value
+        newpath = self.path
+        newlock = self.lockfile
+        newstatus = self.statusfile
         self._logger.debug("timestamp set to {}.".format(self.stimestamp))
+        if os.access(oldpath, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldpath, newpath))
+            os.rename(oldpath, newpath)
+        if os.access(oldlock, os.F_OK):
+            os.rename(oldlock, newlock)
+        if os.access(oldstatus, os.F_OK):
+            os.rename(oldstatus, newstatus)
 
     @property
     def stimestamp(self):
         """The timestamp as a ISO 8601 string."""
-        return self.timestamp.strftime(self._timeformat)
+        if self.timestamp is None:
+            return "0"
+        else:
+            return self.timestamp.strftime(self._timeformat)
 
     @property
     def status(self):
@@ -267,6 +287,9 @@ class Snapshot(Lockable):
         shutil.rmtree(self.path)
         self.status = DELETED
         self._logger.info("Deletion complete.")
+
+    def sync(self):
+        pass
 
 
 # vim:cc=80

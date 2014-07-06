@@ -14,9 +14,10 @@ class TestSnapshot(BasicSetup):
     def test_init(self):
         now = datetime.datetime.now()
         s = Snapshot(self.testdest, "interval")
-        self.assertGreaterEqual(s.timestamp, now)
+        self.assertIsNone(s.timestamp)
         self.assertTrue(s.path.startswith(self.testdest))
         self.assertEqual(s.interval, "interval")
+        self.assertTrue(s.path.endswith(".0"), msg=s.path)
 
     def test_set_timestamp(self):
         t = datetime.datetime(2014, 7, 1, 10, 10)
@@ -24,6 +25,25 @@ class TestSnapshot(BasicSetup):
         s.timestamp = t
         self.assertEqual(s.timestamp, t)
         self.assertTrue(s.path.endswith("2014-07-01T10:10"), msg=s.path)
+
+        # Now test renaming directory.
+        s = Snapshot(self.testdest, "interval")
+        s.mkdir()
+        with s:
+            s.status = SYNCING
+            self.assertEqual(
+                sorted(os.listdir(self.testdest)),
+                [".interval.0.lock", ".interval.0.status", "interval.0"]
+                )
+            s.timestamp = t
+            self.assertEqual(
+                sorted(os.listdir(self.testdest)),
+                [
+                    ".interval.2014-07-01T10:10.lock",
+                    ".interval.2014-07-01T10:10.status",
+                    "interval.2014-07-01T10:10",
+                    ]
+                )
 
     def test_find_timestamp_by_index(self):
         os.chdir(self.testdest)

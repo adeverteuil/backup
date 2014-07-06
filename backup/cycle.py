@@ -29,6 +29,7 @@ import logging
 import os.path
 
 from .locking import Lockable
+from .snapshot import *
 
 
 class Cycle(Lockable):
@@ -55,7 +56,7 @@ class Cycle(Lockable):
     def delete(self, index):
         """Delete the snapshot at the specified index."""
         with self.snapshots[index]:
-            self.snapshots[index].delete()
+            self.snapshots.pop(index).delete()
 
     def purge(self, maxnumber, mintime=None):
         """Delete snapshots exceeding maxnumber.
@@ -68,6 +69,16 @@ class Cycle(Lockable):
         """
         pass
 
+    def create_new_snapshot(self):
+        """Use rsyncWrapper to make a new snapshot."""
+        snapshot = Snapshot(self.dir, self.interval)
+        self.snapshots.insert(0, snapshot)
+        msg = "Creating a new snapshot at {}.".format(snapshot.path)
+        self._logger.info(msg)
+        snapshot.mkdir()
+        with snapshot:
+            #TODO syncing
+            snapshot.sync()
 
 
 # vim:cc=80
