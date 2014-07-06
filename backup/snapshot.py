@@ -114,34 +114,35 @@ class Snapshot(Lockable):
         The expected string format is:
             /path/to/backups/name/interval.yyyy-mm-ddThh:mm:ss
         """
-        pass
+        dir = os.path.dirname(path)
+        interval, stimestamp = os.path.basename(path).split(".")
+        if stimestamp == "0":
+            stimestamp = None
+        return Snapshot(dir, interval, timestamp=stimestamp)
 
-    def __init__(self, dir, interval, index=None):
+    @staticmethod
+    def from_index(dir, interval, index):
+        # Try to find timestamp by index in existing directories.
+        dirs = glob.glob("{}/{}.*".format(dir, interval))
+        dirs.sort()
+        dirs[index]  # raises IndexError.
+        if dirs[index].endswith(".0"):
+            timestamp = None
+        else:
+            timestamp = datetime.datetime.strptime(
+                dirs[index].rsplit(".")[-1],
+                Snapshot._timeformat
+                )
+        return Snapshot(dir, interval, timestamp)
+
+    def __init__(self, dir, interval, timestamp=None):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         self.dir = dir
         self.interval = interval
         self._status = None
-        if index is None:
-            self._timestamp = None
-            self.index = 0
-        else:
-            # Try to find timestamp by index in existing directories.
-            dirs = glob.glob(
-                "{}/{}.*".format(
-                    self.dir,
-                    self.interval
-                    )
-                )
-            dirs.sort()
-            dirs[index]  # raises IndexError.
-            if dirs[index].endswith(".0"):
-                self._timestamp = None
-            else:
-                self._timestamp = datetime.datetime.strptime(
-                    dirs[index].rsplit(".")[-1],
-                    self._timeformat
-                    )
-            self.index = index
+        if isinstance(timestamp, str):
+            timestamp = datetime.datetime.strptime(timestamp, self._timeformat)
+        self._timestamp = timestamp
         self.infer_status()
 
     @property

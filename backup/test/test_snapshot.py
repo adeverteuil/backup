@@ -62,7 +62,7 @@ class TestSnapshot(BasicSetup):
                     ]
                 )
 
-    def test_find_timestamp_by_index(self):
+    def test_snapshot_from_index(self):
         os.chdir(self.testdest)
         for d in range(1, 5):
             os.mkdir("daily.2014-07-{:02}T00:00".format(d))
@@ -70,12 +70,31 @@ class TestSnapshot(BasicSetup):
         os.mkdir("hourly.2014-07-01T00:00")
         os.mkdir("some_random_directory")
         for d in range(4):
-            s = Snapshot(self.testdest, "daily", d)
+            s = Snapshot.from_index(self.testdest, "daily", d)
             self.assertEqual(s.timestamp, datetime.datetime(2014, 7, d+1))
         with self.assertRaises(IndexError):
-            s = Snapshot(self.testdest, "daily", 4)
-        s = Snapshot(self.testdest, "daily", -1)
+            s = Snapshot.from_index(self.testdest, "daily", 4)
+        s = Snapshot.from_index(self.testdest, "daily", -1)
         self.assertEqual(s.timestamp, datetime.datetime(2014, 7, 4))
+
+    def test_snapshot_from_path(self):
+        os.chdir(self.testdest)
+        os.mkdir("daily.2014-07-01T00:00")
+        os.mkdir("daily.0")
+        s = Snapshot.from_path(os.path.join(self.testdest, "daily.0"))
+        self.assertIsNone(s.timestamp)
+        self.assertEqual(
+            s.path,
+            os.path.join(self.testdest, "daily.0")
+            )
+        s = Snapshot.from_path(
+            os.path.join(self.testdest, "daily.2014-07-01T00:00")
+            )
+        self.assertEqual(s.timestamp, datetime.datetime(2014, 7, 1))
+        self.assertEqual(
+            s.path,
+            os.path.join(self.testdest, "daily.2014-07-01T00:00")
+            )
 
     def test_locking(self):
         # Setup
@@ -87,7 +106,7 @@ class TestSnapshot(BasicSetup):
         self.assertTrue(os.access(s1.lockfile, os.R_OK), msg=s1.lockfile)
         # Test acquiring the lock with another snapshot object.
         with self.assertRaises(AlreadyLocked):
-            s2 = Snapshot(self.testdest, "interval", 0)
+            s2 = Snapshot.from_index(self.testdest, "interval", 0)
             s2.acquire()
         # Attempt to acquire the lock a second time from another thread.
         def grab_lock(lockable, q):
@@ -173,7 +192,7 @@ class TestSnapshot(BasicSetup):
 
         snapshots = []
         for d in range(4):
-            snapshots.append(Snapshot(self.testdest, "daily", d))
+            snapshots.append(Snapshot.from_index(self.testdest, "daily", d))
         self.assertEqual(snapshots[0].status, BLANK)
         self.assertEqual(snapshots[1].status, SYNCING)
         self.assertEqual(snapshots[2].status, COMPLETE)

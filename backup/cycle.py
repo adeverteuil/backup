@@ -42,6 +42,10 @@ class Cycle(Lockable):
         self.path = os.path.join(dir)
         self.lockfile = os.path.join(dir, "."+interval+".lock")
 
+    def _make_snapshots_list(self):
+        for file in glob.glob("{}/{}.*".format(self.dir, self.interval)):
+            pass
+
     @staticmethod
     def _cp_la(src, dst):
         """Emulate cp -la.
