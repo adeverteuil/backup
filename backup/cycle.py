@@ -75,7 +75,6 @@ class Cycle(Lockable):
         msg = "Creating a new snapshot at {}.".format(snapshot.path)
         self._logger.info(msg)
         with snapshot:
-            #TODO syncing
             snapshot.mkdir()
             snapshot.status = SYNCING
             try:
