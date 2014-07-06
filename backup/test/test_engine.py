@@ -70,7 +70,6 @@ class TestPipeLogger(BasicSetup):
     def test_interrupt_event(self):
         r, w = os.pipe()
         e = threading.Event()
-        lock = threading.Lock()
         m = unittest.mock.Mock()
         with open(r) as rf, open(w, "w") as wf:
             p = PipeLogger(rf, m, e)
