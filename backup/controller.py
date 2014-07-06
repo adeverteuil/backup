@@ -27,6 +27,7 @@ from .config import *
 
 
 def main():
+    logging.getLogger().addHandler(handlers['stream'])
     c = Controller()
 
 
@@ -35,7 +36,6 @@ class Controller:
     """Makes sense of configuration options and orchestrates backups."""
 
     def __init__(self):
-        logging.getLogger().addHandler(handlers['stream'])
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         opt = Configuration().configure()
 
