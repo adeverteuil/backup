@@ -146,24 +146,24 @@ class Configuration:
 
         Returns the ConfigParser object with all the collected options.
         """
-        self.parse_environ()
-        self.parse_args()
-        self.do_early_logging_config()
-        self.read_config()
-        self.process_remaining_args()
+        self._parse_environ()
+        self._parse_args()
+        self._do_early_logging_config()
+        self._read_config()
+        self._process_remaining_args()
         return self.config
 
-    def parse_environ(self):
+    def _parse_environ(self):
         """Overrides some defaults with environment variables."""
         if 'BACKUP_CONFIGFILE' in self.environ:
             self.config['DEFAULT']['configfile'] = \
                 self.environ['BACKUP_CONFIGFILE']
 
-    def parse_args(self):
+    def _parse_args(self):
         """Adds arguments to the ArgumentParser instance and parses args."""
         self.args = self.argumentparser.parse_args(self.argv)
 
-    def do_early_logging_config(self):
+    def _do_early_logging_config(self):
         """Configures early logging according to the --verbose option."""
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -182,7 +182,7 @@ class Configuration:
                 lvl = "INFO"
         self._logger.debug("Log level set to {}".format(lvl))
 
-    def read_config(self):
+    def _read_config(self):
         """Finds and reads the config files. Uses the --configfile option."""
         self._logger.debug("START reading configuration from file.")
         if self.args.configfile:
@@ -192,11 +192,6 @@ class Configuration:
         with open(configfile) as fh:
             self.config.read_file(fh)
         self._logger.debug("DONE reading configuration from file.")
-
-    def process_remaining_args(self):
-        """Parses remaining arguments and overrides some config values."""
-        # There is nothing to do at the moment.
-        pass
 
 
 # vim:cc=80
