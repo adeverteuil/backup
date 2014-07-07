@@ -59,13 +59,10 @@ class Cycle(Lockable):
         pass
 
     def get_linkdest(self):
-        """Return the most recent COMPLETE Snapshot in its list, or None.
-
-        The return value is the string of the Snapshot's path.
-        """
+        """Return the most recent COMPLETE Snapshot in its list, or None."""
         for snapshot in self.snapshots:
-            if snapshot.status == COMPLETE:
-                return snapshot.path
+            if snapshot.status == COMPLETE and not snapshot.is_locked():
+                return snapshot
         return None
 
     def delete(self, index):
@@ -93,13 +90,22 @@ class Cycle(Lockable):
         with snapshot:
             snapshot.mkdir()
             snapshot.status = SYNCING
+            # Get a clean snapshot to hardlink unchanged files to.
+            linkdest = self.get_linkdest()
             try:
-                engine.sync_to(snapshot.path, self.get_linkdest())
+                if linkdest is not None:
+                    linkdest.acquire()
+                    linkdestpath = linkdest.path
+                else:
+                    linkdestpath = None
+                engine.sync_to(snapshot.path, linkdestpath)
                 engine.wait()
             except KeyboardInterrupt:
                 engine.interrupt_event.set()
                 raise
             finally:
                 engine.close_pipes()
+                if linkdest is not None:
+                    linkdest.release()
             snapshot.status = COMPLETE
             snapshot.timestamp = datetime.datetime.now()

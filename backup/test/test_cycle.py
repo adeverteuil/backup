@@ -75,7 +75,7 @@ class TestCycle(BasicSetup):
         rsync = rsyncWrapper(config['DEFAULT'])
         cycle.create_new_snapshot(rsync)
         self.assertEqual(
-            cycle.get_linkdest(),
+            cycle.get_linkdest().path,
             os.path.join(self.testdest, os.listdir(self.testdest)[0])
             )
         # Set-back snapshot's timestamp so the next one will not raise OSError.
