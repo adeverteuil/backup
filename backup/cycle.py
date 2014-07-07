@@ -55,8 +55,28 @@ class Cycle(Lockable):
         Recursively copy a tree while hard-linking all files and preserving
         attributes.
         """
-        # src and dst should be snapshots that I can lock maybe?
-        pass
+        src = os.path.normpath(src)
+        dst = os.path.normpath(dst)
+        for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
+            dirpath_dst = os.path.join(dst, os.path.relpath(dirpath, src))
+            for dir in dirnames:
+                if stat.S_ISLNK(os.lstat(os.path.join(dirpath, dir)).st_mode):
+                    # Source directory is a symbolic link.
+                    # Copy the symlink instead of creating a new directory.
+                    shutil.copy2(os.path.join(dirpath, dir),
+                                 os.path.join(dirpath_dst, dir),
+                                 follow_symlinks=False)
+                else:
+                    os.mkdir(os.path.join(dirpath_dst, dir))
+                    uid = os.stat(os.path.join(dirpath, dir)).st_uid
+                    gid = os.stat(os.path.join(dirpath, dir)).st_gid
+                    os.chown(os.path.join(dirpath_dst, dir), uid, gid)
+                    shutil.copystat(os.path.join(dirpath, dir),
+                                    os.path.join(dirpath_dst, dir))
+            for file in filenames:
+                os.link(os.path.join(dirpath, file),
+                        os.path.join(dirpath_dst, file))
+        shutil.copystat(src, dst)
 
     def get_linkdest(self):
         """Return the most recent COMPLETE Snapshot in its list, or None."""
@@ -109,3 +129,34 @@ class Cycle(Lockable):
                     linkdest.release()
             snapshot.status = COMPLETE
             snapshot.timestamp = datetime.datetime.now()
+
+    def archive_from(self, cycle):
+        """Copy a snapshot from another cycle.
+
+        This method copies the most recent complete snapshot from cycle into
+        itself. It copies the directory hierarchy while hard-linking all files.
+
+        Let's say there is a daily and an hourly backup. The hourly cycle will
+        be updated with the create_new_snapshot method while the daily cycle
+        will be updated with the archive_from method.
+        """
+        snapshot = Snapshot(self.dir, self.interval)
+        self.snapshots.insert(0, snapshot)
+        origin = cycle.get_linkdest()
+        if origin is None:
+            msg = "No {} snapshot to copy was found in {}.".format(
+                cycle.dir,
+                cycle.interval,
+                )
+            raise ValueError(msg)
+        msg = "Copying snapshot from {} cycle to {} cycle.".format(
+            self.interval,
+            cycle.interval,
+            )
+        self._logger.debug(msg)
+        with snapshot, origin:
+            snapshot.mkdir()
+            snapshot.status = SYNCING
+            self._cp_la(origin.path, snapshot.path)
+            snapshot.status = COMPLETE
+            snapshot.timestamp = origin.timestamp

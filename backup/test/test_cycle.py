@@ -97,3 +97,24 @@ class TestCycle(BasicSetup):
                 os.stat(filepath).st_nlink,
                 3
                 )
+
+    def test_archive_from(self):
+        cycle_h = Cycle(self.testdest, "hourly")
+        cycle_d = Cycle(self.testdest, "daily")
+        config = Configuration(
+            argv=["-c", self.configfile],
+            environ={},
+            ).configure()
+        rsync = rsyncWrapper(config['DEFAULT'])
+        cycle_h.create_new_snapshot(rsync)
+        cycle_d.archive_from(cycle_h)
+        self.assertEqual(
+            sorted(os.listdir(cycle_h.snapshots[0].path)),
+            sorted(os.listdir(cycle_d.snapshots[0].path))
+            )
+        for file in os.listdir(cycle_d.snapshots[0].path):
+            filepath = os.path.join(cycle_d.snapshots[0].path, file)
+            self.assertEqual(
+                os.stat(filepath).st_nlink,
+                2
+                )
