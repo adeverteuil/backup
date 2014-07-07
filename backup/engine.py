@@ -65,7 +65,6 @@ class rsyncWrapper:
         if 'bwlimit' in options:
             args.append("--bwlimit={}".format(options['bwlimit']))
         #TODO --exclude_from and --filter files
-        #TODO --link-dest
         sourcedirs = options['sourcedirs'].split(":")
         if 'sourcehost' in options:
             # Transform this:  ["dir1", "dir2", "dir3"]
@@ -87,8 +86,6 @@ class rsyncWrapper:
             linkdest -- If not None, the directory to hardlink unchanged
                 files from.
         """
-        if hasattr(self, "process"):
-            raise RuntimeError("sync-to was called already before.")
         args = self.args
         if linkdest is not None:
             # Insert rather than append because the source directories are

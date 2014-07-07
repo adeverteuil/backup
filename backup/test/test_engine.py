@@ -47,8 +47,6 @@ class TestEngine(BasicSetup):
         r.sync_to(self.testdest)
         r.wait()
         self.assertTrue(mockpopen.called)
-        with self.assertRaises(RuntimeError):
-            r.sync_to(self.testdest)
         r = rsyncWrapper(self.minimal_options)
         r.sync_to(self.testdest, "/foo/link-dest")
         r.wait()

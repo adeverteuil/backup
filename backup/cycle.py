@@ -58,6 +58,16 @@ class Cycle(Lockable):
         # src and dst should be snapshots that I can lock maybe?
         pass
 
+    def get_linkdest(self):
+        """Return the most recent COMPLETE Snapshot in its list, or None.
+
+        The return value is the string of the Snapshot's path.
+        """
+        for snapshot in self.snapshots:
+            if snapshot.status == COMPLETE:
+                return snapshot.path
+        return None
+
     def delete(self, index):
         """Delete the snapshot at the specified index."""
         with self.snapshots[index]:
@@ -84,7 +94,7 @@ class Cycle(Lockable):
             snapshot.mkdir()
             snapshot.status = SYNCING
             try:
-                engine.sync_to(snapshot.path)
+                engine.sync_to(snapshot.path, self.get_linkdest())
                 engine.wait()
             except KeyboardInterrupt:
                 engine.interrupt_event.set()

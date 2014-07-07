@@ -65,3 +65,35 @@ class TestCycle(BasicSetup):
             )
         cycle = Cycle(self.testdest, "hourly")
         self.assertEqual(cycle.snapshots, [])
+
+    def test_get_linkdest(self):
+        cycle = Cycle(self.testdest, "hourly")
+        config = Configuration(
+            argv=["-c", self.configfile],
+            environ={},
+            ).configure()
+        rsync = rsyncWrapper(config['DEFAULT'])
+        cycle.create_new_snapshot(rsync)
+        self.assertEqual(
+            cycle.get_linkdest(),
+            os.path.join(self.testdest, os.listdir(self.testdest)[0])
+            )
+        # Set-back snapshot's timestamp so the next one will not raise OSError.
+        cycle.snapshots[0].timestamp = datetime.datetime(2014, 7, 1)
+        cycle.create_new_snapshot(rsync)
+        # We check to make sure all files are hard-linked.
+        for file in os.listdir(cycle.snapshots[0].path):
+            filepath = os.path.join(cycle.snapshots[0].path, file)
+            self.assertEqual(
+                os.stat(filepath).st_nlink,
+                2
+                )
+        # Again, same thing.
+        cycle.snapshots[0].timestamp = datetime.datetime(2014, 7, 2)
+        cycle.create_new_snapshot(rsync)
+        for file in os.listdir(cycle.snapshots[0].path):
+            filepath = os.path.join(cycle.snapshots[0].path, file)
+            self.assertEqual(
+                os.stat(filepath).st_nlink,
+                3
+                )
