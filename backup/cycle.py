@@ -90,16 +90,18 @@ class Cycle(Lockable):
         with self.snapshots[index]:
             self.snapshots.pop(index).delete()
 
-    def purge(self, maxnumber, mintime=None):
+    def purge(self, maxnumber):
         """Delete snapshots exceeding maxnumber.
 
         Parameters:
             maxnumber -- An int, the number of snapshots to keep.
-            mintime -- A datetime.timedelta, snapshots in amount exceeding
-                       maxnumber will be kept if they are newer than
-                       mintime ago.
         """
-        pass
+        for snapshot in self.snapshots[maxnumber:]:
+            with snapshot:
+                snapshot.status = DELETING
+                snapshot.delete()
+                snapshot.status = DELETED
+                self.snapshots.remove(snapshot)
 
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""

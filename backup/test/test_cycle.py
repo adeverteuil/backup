@@ -118,3 +118,16 @@ class TestCycle(BasicSetup):
                 os.stat(filepath).st_nlink,
                 2
                 )
+
+    def test_purge(self):
+        os.chdir(self.testdest)
+        for d in range(1, 5):
+            os.mkdir("hourly.2014-07-{:02}T00:00".format(d))
+            open("hourly.2014-07-{:02}T00:00/file".format(d), "w").close()
+        c = Cycle(self.testdest, "hourly")
+        self.assertEqual(len(c.snapshots), 4)
+        c.purge(1)
+        self.assertEqual(
+            os.listdir(self.testdest),
+            ["hourly.2014-07-01T00:00"],
+            )
