@@ -31,7 +31,7 @@ class TestConfiguration(BasicSetup):
 
     def test_defaults(self):
         c = Configuration()
-        options = c.config['DEFAULT']
+        options = c.config.defaults()
         self.assertEqual(options['configfile'], "/etc/backup")
         # Check sane values for source directories list.
         sources = options['sources'].split(":")
@@ -44,7 +44,7 @@ class TestConfiguration(BasicSetup):
         # Empty environment
         c = Configuration(environ=dict())
         c._parse_environ()
-        options = c.config['DEFAULT']
+        options = c.config.defaults()
         self.assertEqual(options['configfile'], "/etc/backup")
         # Loaded environment
         environ = {
@@ -52,7 +52,7 @@ class TestConfiguration(BasicSetup):
             }
         c = Configuration(environ=environ)
         c._parse_environ()
-        options = c.config['DEFAULT']
+        options = c.config.defaults()
         self.assertEqual(options['configfile'], self.configfile)
 
     def test_parse_args(self):
@@ -87,4 +87,4 @@ class TestConfiguration(BasicSetup):
         c._parse_args()
         c.args.configfile = self.configfile
         c._read_config()
-        self.assertEqual(c.config['DEFAULT']['dest'], self.testdest)
+        self.assertEqual(c.config.defaults()['dest'], self.testdest)

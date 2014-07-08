@@ -68,14 +68,11 @@ class BasicSetup(unittest.TestCase):
         to the tests to conduct.
         """
         config = (
-            "[DEFAULT]\n"
+            "[default]\n"
             "sourcedirs=" + self.testsource + "\n"
             "dest=" + self.testdest + "\n"
             "excludefile=/dev/null\n"
             "filterfile=/dev/null\n"
-            "\n"
-            "[daily]\n"
-            "snapshotlimit=4\n"
             )
         return config
 

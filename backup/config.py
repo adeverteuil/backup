@@ -49,7 +49,7 @@ from .version import __version__
 
 
 def _make_sources_list():
-    """Return a default list of directories to back up.
+    """Return a default string of colon-separated paths to back up.
 
     Start with the list of direct children of "/".
     Remove virtual filesystems from the list.
@@ -64,10 +64,13 @@ def _make_sources_list():
 
 
 DEFAULTS = {
-    'sources': _make_sources_list(),
     'configfile': "/etc/backup",
-    'dest': "/root/var/backups",
     'rsync': "/usr/bin/rsync",
+    'sources': _make_sources_list(),
+    'dest': "/root/var/backups",
+    'hourlies': "24",
+    'dailies': "31",
+    'warn bytes transferred': str(1 * 10**8),  # 100MB
     }
 
 
@@ -107,7 +110,10 @@ class Configuration:
         self.argv = argv if argv is not None else sys.argv[1:]
         self.args = None  # This will hold the return value of parse_args().
         self.environ = environ if environ is not None else os.environ
-        self.config = configparser.ConfigParser(defaults=DEFAULTS)
+        self.config = configparser.ConfigParser(
+            defaults=DEFAULTS,
+            default_section="default",
+            )
         self.argumentparser = argparse.ArgumentParser(add_help=False)
         self._configure_argumentparser()
 
@@ -152,7 +158,7 @@ class Configuration:
     def _parse_environ(self):
         """Overrides some defaults with environment variables."""
         if 'BACKUP_CONFIGFILE' in self.environ:
-            self.config['DEFAULT']['configfile'] = \
+            self.config.defaults()['configfile'] = \
                 self.environ['BACKUP_CONFIGFILE']
 
     def _parse_args(self):
@@ -184,7 +190,7 @@ class Configuration:
         if self.args.configfile:
             configfile = self.args.configfile
         else:
-            configfile = self.config['DEFAULT']['configfile']
+            configfile = self.config.defaults()['configfile']
         with open(configfile) as fh:
             self.config.read_file(fh)
         self._logger.debug("DONE reading configuration from file.")
