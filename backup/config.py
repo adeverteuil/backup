@@ -66,7 +66,7 @@ def _make_sources_list():
 DEFAULTS = {
     'configfile': "/etc/backup",
     'rsync': "/usr/bin/rsync",
-    'sources': _make_sources_list(),
+    'sourcedirs': _make_sources_list(),
     'dest': "/root/var/backups",
     'hourlies': "24",
     'dailies': "31",
@@ -137,11 +137,12 @@ class Configuration:
         parser.add_argument("--configfile", "-c",
                             help="Use this file rather than the default.",
                             )
-        parser.add_argument("host",
+        parser.add_argument("hosts",
             nargs="*",
             help=("List of hosts to do a backup of. Hosts are defined through "
                   "configuration files in /etc/backup.d. If no hosts are "
                   "specified, all defined hosts are backed up sequentially."),
+            metavar="host",
             )
 
     def configure(self):
@@ -153,6 +154,17 @@ class Configuration:
         self._parse_args()
         self._do_early_logging_config()
         self._read_config()
+        self._merge_args_with_config()
+        self._logger.debug(
+            "Hosts defined: {}".format(self.config.sections())
+            )
+        for host in self.config.sections():
+            self._logger.debug(
+                "{}: {}".format(
+                    host,
+                    {k: v for k, v in self.config[host].items()},
+                    )
+                )
         return self.config
 
     def _parse_environ(self):
@@ -160,10 +172,16 @@ class Configuration:
         if 'BACKUP_CONFIGFILE' in self.environ:
             self.config.defaults()['configfile'] = \
                 self.environ['BACKUP_CONFIGFILE']
+            self._logger.debug(
+                "From env: BACKUP_CONFIGFILE = {}".format(
+                    self.environ['BACKUP_CONFIGFILE']
+                    )
+                )
 
     def _parse_args(self):
         """Adds arguments to the ArgumentParser instance and parses args."""
         self.args = self.argumentparser.parse_args(self.argv)
+        self._logger.debug("Parsed args: {}".format(vars(self.args)))
 
     def _do_early_logging_config(self):
         """Configures early logging according to the --verbose option."""
@@ -186,11 +204,17 @@ class Configuration:
 
     def _read_config(self):
         """Finds and reads the config files. Uses the --configfile option."""
-        self._logger.debug("START reading configuration from file.")
         if self.args.configfile:
             configfile = self.args.configfile
         else:
             configfile = self.config.defaults()['configfile']
         with open(configfile) as fh:
+            self._logger.debug(
+                "Reading configuration from {}.".format(configfile)
+                )
             self.config.read_file(fh)
-        self._logger.debug("DONE reading configuration from file.")
+
+    def _merge_args_with_config(self):
+        # --configfile has already been parsed in _read_config().
+        if self.args.hosts:
+            self.config.defaults()['hosts'] = " ".join(self.args.hosts)

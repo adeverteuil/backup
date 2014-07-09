@@ -39,6 +39,9 @@ class rsyncWrapper:
     """Manages an rsync subprocess and threads that log its output streams."""
 
     def __init__(self, options):
+        """
+        options -- one section of a ConfigParser.
+        """
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
         self.options = options
         # This event is passed to PipeLogger threads. While waiting for the

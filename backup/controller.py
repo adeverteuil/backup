@@ -19,19 +19,85 @@
 
 
 import logging
+import os.path
 
 from .config import *
+from .cycle import Cycle
+from .engine import rsyncWrapper
 
 
 def main():
     logging.getLogger().addHandler(handlers['stream'])
-    c = Controller()
+    Controller(Configuration().configure()).run()
 
 
 class Controller:
 
     """Makes sense of configuration options and orchestrates backups."""
 
-    def __init__(self):
+    def __init__(self, config):
         self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
-        opt = Configuration().configure()
+        self.config = config
+
+    def run(self):
+        try:
+            self._sanity_checks()
+            self._run()
+        except:
+            errtype, errval, traceback = sys.exc_info()
+            self._logger.error(errval.args[0])
+
+    def _run(self):
+        config = self.config
+        for host in config.defaults()['hosts'].split(" "):
+            thisconfig = config[host]
+            dest = os.path.join(thisconfig['dest'], host)
+            hourlies = int(thisconfig['hourlies'])
+            dailies = int(thisconfig['dailies'])
+            if hourlies > 0:
+                cycle = Cycle(dest, "hourly")
+                rsync = rsyncWrapper(thisconfig)
+                cycle.create_new_snapshot(rsync)
+                cycle.purge(hourlies)
+            if dailies > 0:
+                cycle = Cycle(dest, "daily")
+                if hourlies > 0:
+                    # dailies > 0 and hourlies > 0
+                    # Create dailies by archiving hourlies.
+                    cycle.archive_from(Cycle(dest, "hourly"))
+                else:
+                    # dailies > 0 but hourlies <= 0
+                    # Create dailies with rsync.
+                    rsync = rsyncWrapper(thisconfig)
+                    cycle.create_new_snapshot(rsync)
+                cycle.purge(dailies)
+
+    def _sanity_checks(self):
+        config = self.config
+        if not config.sections():
+            raise ValueError(
+                "No hosts defined in {}.".format(
+                    config.defaults()['configfile']
+                    )
+                )
+        if not config.defaults()['hosts']:
+            raise ValueError(
+                "No default hosts to back up are defined in {} and none were "
+                "listed in the command line arguments.".format(
+                    config.defaults()['configfile']
+                    )
+                )
+        for host in config.defaults()['hosts'].split(" "):
+            self._logger.info("Backing up host {}.".format(host))
+            if host not in config.sections():
+                raise ValueError(
+                    "{} not defined in {}.".format(
+                        host,
+                        config.defaults()['configfile'],
+                        )
+                    )
+            #TODO:
+            # - Check that /dest/host directory exists and is writeable.
+            # - If it is a mountpoint, check that it is mounted.
+            # - If it is a remote backup, check for SSH_AGENT_PID and
+            #    SSH_AUTH_SOCK environment variables?

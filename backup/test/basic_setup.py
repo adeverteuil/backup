@@ -73,6 +73,15 @@ class BasicSetup(unittest.TestCase):
             "dest=" + self.testdest + "\n"
             "excludefile=/dev/null\n"
             "filterfile=/dev/null\n"
+            "[host_1_1]\n"
+            "hourlies = 1\n"
+            "dailies = 1\n"
+            "[host_0_1]\n"
+            "hourlies = 0\n"
+            "dailies = 1\n"
+            "[host_1_0]\n"
+            "hourlies = 1\n"
+            "dailies = 0\n"
             )
         return config
 

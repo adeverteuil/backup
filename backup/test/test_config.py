@@ -34,7 +34,7 @@ class TestConfiguration(BasicSetup):
         options = c.config.defaults()
         self.assertEqual(options['configfile'], "/etc/backup")
         # Check sane values for source directories list.
-        sources = options['sources'].split(":")
+        sources = options['sourcedirs'].split(":")
         for d in ("/sys", "/proc", "/dev"):
             self.assertNotIn(d, sources)
         for d in ("/etc", "/home", "/usr"):
@@ -59,11 +59,11 @@ class TestConfiguration(BasicSetup):
         c = Configuration(argv=[])
         c._parse_args()
         self.assertIsNotNone(c.args)
-        self.assertEqual(c.args.host, [])
+        self.assertEqual(c.args.hosts, [])
         c = Configuration(argv=["--verbose", "aaa"])
         c._parse_args()
         self.assertEqual(c.args.verbose, 1)
-        self.assertEqual(c.args.host, ["aaa"])
+        self.assertEqual(c.args.hosts, ["aaa"])
 
     def test_do_early_logging_config(self):
         c = Configuration(argv=[])
