@@ -103,8 +103,6 @@ and run it from the project's root directory.
     pip install -e .
     behave
 
-.. note:: Features for behave have not been written yet.
-
 Unit tests are also provided.
 
 ::
