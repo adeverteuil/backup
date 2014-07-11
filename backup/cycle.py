@@ -108,13 +108,19 @@ class Cycle(Lockable):
 
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""
-        snapshot = Snapshot(self.dir, self.interval)
-        self.snapshots.insert(0, snapshot)
-        msg = "Creating a new snapshot at {}.".format(snapshot.path)
+        if len(self.snapshots) > 0 and self.snapshots[0].status == SYNCING:
+            # Resume an aborted sync.
+            snapshot = self.snapshots[0]
+            msg = "Resuming snapshot {}.".format(snapshot.path)
+        else:
+            snapshot = Snapshot(self.dir, self.interval)
+            self.snapshots.insert(0, snapshot)
+            msg = "Creating a new snapshot at {}.".format(snapshot.path)
+            with snapshot:
+                snapshot.mkdir()
+                snapshot.status = SYNCING
         self._logger.info(msg)
         with snapshot:
-            snapshot.mkdir()
-            snapshot.status = SYNCING
             # Get a clean snapshot to hardlink unchanged files to.
             linkdest = self.get_linkdest()
             try:

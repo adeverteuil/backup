@@ -49,6 +49,30 @@ class TestCycle(BasicSetup):
             sorted(os.listdir(dest))
             )
 
+    def test_resume_create_new_snapshot(self):
+        # Simulate an aborted sync.
+        os.chdir(self.testdest)
+        os.mkdir("hourly.0")
+        with open(".hourly.0.status", "w") as f:
+            f.write(str(SYNCING))
+        inode = os.stat("hourly.0").st_ino
+        # Setup as usual.
+        cycle = Cycle(self.testdest, "hourly")
+        config= Configuration(
+            argv=["-c", self.configfile],
+            environ={},
+            ).configure()
+        rsync = rsyncWrapper(config.defaults())
+        # Go.
+        with cycle:
+            cycle.create_new_snapshot(rsync)
+        # Check.
+        self.assertEqual(len(os.listdir()), 1, msg=os.listdir())
+        self.assertEqual(
+            os.stat(os.listdir()[0]).st_ino,
+            inode
+            )
+
     def test_build_snapshots_list(self):
         os.chdir(self.testdest)
         os.mkdir("daily.2014-07-01T00:00")
