@@ -21,6 +21,7 @@
 import datetime
 import logging
 import os.path
+import traceback
 
 from .config import *
 from .cycle import Cycle
@@ -46,31 +47,39 @@ class Controller:
             self._sanity_checks()
             self._run()
         except:
-            errtype, errval, traceback = sys.exc_info()
+            errtype, errval, tb = sys.exc_info()
             self._logger.error(errval.args[0])
+            self._logger.debug(
+                "".join(["Traceback:\n"] + traceback.format_tb(tb))
+                )
             errors = 1
+        self._logger.info("Exiting normally")
         return errors
 
     def _run(self):
         config = self.config
         for host in config.defaults()['hosts'].split(" "):
+            self._logger.info("Processing {}.".format(host))
             thisconfig = config[host]
             dest = os.path.join(thisconfig['dest'], host)
             hourlies = int(thisconfig['hourlies'])
             dailies = int(thisconfig['dailies'])
             if hourlies > 0:
+                self._logger.info("Starting hourly cycle")
                 cycle = Cycle(dest, "hourly")
                 rsync = rsyncWrapper(thisconfig)
                 cycle.create_new_snapshot(rsync)
                 cycle.purge(hourlies)
             if dailies > 0:
+                self._logger.info("Starting daily cycle")
                 cycle = Cycle(dest, "daily")
                 a_day = datetime.timedelta(days=1)
                 now = datetime.datetime.now()
                 if (len(cycle.snapshots) > 0 and
                     cycle.snapshots[0].timestamp + a_day >= now):
                     self._logger.debug(
-                        "Most recent daily snapshot is less than one day ago."
+                        "Most recent daily snapshot is less than one day ago. "
+                        "Not doing a daily backup."
                         )
                     break
                 if hourlies > 0:
