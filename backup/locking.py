@@ -118,6 +118,10 @@ class Lockable:
                 raise LockFailed(msg) from err
         else:
             open(self._unique_name, "wb").close()
+            if hasattr(self, "_logger"):
+                self._logger.debug(
+                    "Lock created: {}.".format(self._unique_name)
+                    )
 
     def release(self):
         if not self.is_locked():
@@ -127,6 +131,10 @@ class Lockable:
         else:
             os.remove(self._unique_name)
             os.rmdir(self.lockfile)
+            if hasattr(self, "_logger"):
+                self._logger.debug(
+                    "Lock released: {}.".format(self._unique_name)
+                    )
 
     def is_locked(self):
         return os.access(self.lockfile, os.F_OK)
@@ -139,6 +147,10 @@ class Lockable:
             for name in os.listdir(self.lockfile):
                 os.remove(os.path.join(self.lockfile, name))
             os.rmdir(self.lockfile)
+            if hasattr(self, "_logger"):
+                self._logger.debug(
+                    "Lock broken: {}.".format(self._unique_name)
+                    )
 
     def __enter__(self):
         self.acquire()

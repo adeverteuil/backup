@@ -48,12 +48,13 @@ class Cycle(Lockable):
         self.lockfile = os.path.join(dir, "."+interval+".lock")
 
     def _build_snapshots_list(self):
+        self._logger.debug("Building {} snapshots list.".format(self.interval))
         dirs = sorted(glob.glob("{}/{}.*".format(self.dir, self.interval)))
         for dir in dirs:
-            self.snapshots.append(Snapshot.from_path(dir))
+            self._logger.debug("Inserting {}.".format(dir))
+            self.snapshots.insert(0, Snapshot.from_path(dir))
 
-    @staticmethod
-    def _cp_la(src, dst):
+    def _cp_la(self, src, dst):
         """Emulate cp -la.
 
         Recursively copy a tree while hard-linking all files and preserving
@@ -61,6 +62,7 @@ class Cycle(Lockable):
         """
         src = os.path.normpath(src)
         dst = os.path.normpath(dst)
+        self._logger.info("Copying {} to {}.".format(src, dst))
         for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
             dirpath_dst = os.path.join(dst, os.path.relpath(dirpath, src))
             for dir in dirnames:
@@ -92,6 +94,9 @@ class Cycle(Lockable):
     def delete(self, index):
         """Delete the snapshot at the specified index."""
         with self.snapshots[index]:
+            self._logger(
+                "Deleting snapshot {}.".format(self.snapshots[index].path)
+                )
             self.snapshots.pop(index).delete()
 
     def purge(self, maxnumber):
@@ -153,7 +158,6 @@ class Cycle(Lockable):
         will be updated with the archive_from method.
         """
         snapshot = Snapshot(self.dir, self.interval)
-        self.snapshots.insert(0, snapshot)
         origin = cycle.get_linkdest()
         if origin is None:
             msg = "No {} snapshot to copy was found in {}.".format(
@@ -161,11 +165,20 @@ class Cycle(Lockable):
                 cycle.interval,
                 )
             raise ValueError(msg)
+        if (len(self.snapshots) > 0 and
+            origin.timestamp <= self.snapshots[0].timestamp):
+            msg = "{} backup is as recent as {}.".format(
+                self.interval,
+                cycle.interval,
+                )
+            self._logger.debug(msg)
+            return
         msg = "Copying snapshot from {} cycle to {} cycle.".format(
-            self.interval,
             cycle.interval,
+            self.interval,
             )
         self._logger.debug(msg)
+        self.snapshots.insert(0, snapshot)
         with snapshot, origin:
             snapshot.mkdir()
             snapshot.status = SYNCING

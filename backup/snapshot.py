@@ -145,6 +145,13 @@ class Snapshot(Lockable):
         self._timestamp = timestamp
         self.infer_status()
 
+    def __repr__(self):
+        name = self.__class__.__name__
+        dir = self.dir
+        interval = self.interval
+        timestamp = repr(self.timestamp)
+        return "{}({}, {}, {})".format(name, dir, interval, timestamp)
+
     @property
     def path(self):
         path = os.path.join(
@@ -184,14 +191,16 @@ class Snapshot(Lockable):
         newpath = self.path
         newlock = self.lockfile
         newstatus = self.statusfile
-        self._logger.debug("timestamp set to {}.".format(self.stimestamp))
+        if os.access(oldlock, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldlock, newlock))
+            os.rename(oldlock, newlock)
         if os.access(oldpath, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldpath, newpath))
             os.rename(oldpath, newpath)
-        if os.access(oldlock, os.F_OK):
-            os.rename(oldlock, newlock)
         if os.access(oldstatus, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldstatus, newstatus))
             os.rename(oldstatus, newstatus)
+        self._logger.debug("timestamp set to {}.".format(self.stimestamp))
 
     @property
     def stimestamp(self):

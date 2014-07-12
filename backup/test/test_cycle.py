@@ -81,11 +81,11 @@ class TestCycle(BasicSetup):
         cycle = Cycle(self.testdest, "daily")
         self.assertEqual(
             [os.path.basename(s.path) for s in cycle.snapshots],
-            sorted(os.listdir(self.testdest))
+            sorted(os.listdir(self.testdest), reverse=True)
             )
         self.assertEqual(
             [s.status for s in cycle.snapshots],
-            [BLANK, COMPLETE]
+            [COMPLETE, BLANK]
             )
         cycle = Cycle(self.testdest, "hourly")
         self.assertEqual(cycle.snapshots, [])
@@ -153,5 +153,5 @@ class TestCycle(BasicSetup):
         c.purge(1)
         self.assertEqual(
             os.listdir(self.testdest),
-            ["hourly.2014-07-01T00:00"],
+            ["hourly.2014-07-04T00:00"],
             )
