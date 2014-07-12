@@ -12,9 +12,18 @@ def step_impl(context):
     context.call_app("-vv")
     print(context.output)
 
+@when("I invoke backup with the arguments \"{args}\"")
+def step_impl(context, args):
+    context.call_app(*args.split(" "))
+    print(context.output)
+
 @then('the program should exit {returncode:d}')
 def step_impl(context, returncode):
     assert context.returncode == returncode, context.returncode
+
+@then("I should see \"{text}\"")
+def step_impl(context, text):
+    assert text in context.output
 
 @then('the {dir} directory should contain {n:d} {interval} snapshots')
 def step_impl(context, dir, n, interval):
