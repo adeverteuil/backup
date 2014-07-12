@@ -18,6 +18,7 @@
 """Controller classes that supervise backup routines."""
 
 
+import datetime
 import logging
 import os.path
 
@@ -61,6 +62,14 @@ class Controller:
                 cycle.purge(hourlies)
             if dailies > 0:
                 cycle = Cycle(dest, "daily")
+                a_day = datetime.timedelta(days=1)
+                now = datetime.datetime.now()
+                if (len(cycle.snapshots) > 0 and
+                    cycle.snapshots[0].timestamp + a_day >= now):
+                    self._logger.debug(
+                        "Most recent daily snapshot is less than one day ago."
+                        )
+                    break
                 if hourlies > 0:
                     # dailies > 0 and hourlies > 0
                     # Create dailies by archiving hourlies.

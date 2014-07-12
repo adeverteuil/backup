@@ -25,6 +25,7 @@ Cycle
 import datetime
 import logging
 import os.path
+import stat
 
 from .locking import Lockable
 from .snapshot import *
