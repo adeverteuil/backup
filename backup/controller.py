@@ -29,7 +29,7 @@ from .engine import rsyncWrapper
 
 def main():
     logging.getLogger().addHandler(handlers['stream'])
-    Controller(Configuration().configure()).run()
+    exit(Controller(Configuration().configure()).run())
 
 
 class Controller:
@@ -41,12 +41,15 @@ class Controller:
         self.config = config
 
     def run(self):
+        errors = 0
         try:
             self._sanity_checks()
             self._run()
         except:
             errtype, errval, traceback = sys.exc_info()
             self._logger.error(errval.args[0])
+            errors = 1
+        return errors
 
     def _run(self):
         config = self.config
