@@ -61,3 +61,12 @@ def step_impl(context, dir, n):
         timepart = timestamp.strftime(fmt)
         os.rename(snapshot, interval+"."+timepart)
     os.chdir(cwd)  # behave is confused if we don't go back.
+
+@then("{host}'s {n:d}{th} {interval} snapshot should contain \"{file}\"")
+def step_impl(context, host, n, th, interval, file):
+    cwd = os.getcwd()
+    os.chdir(context.testdest)
+    os.chdir(host)
+    dirs = sorted(glob.glob("{}.*".format(interval)), reverse=True)
+    assert file in os.listdir(dirs[n-1]), os.listdir(dirs[n-1])
+    os.chdir(cwd)

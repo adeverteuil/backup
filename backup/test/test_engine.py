@@ -59,6 +59,7 @@ class TestEngine(BasicSetup):
                 "--archive",
                 "--one-file-system",
                 "--partial-dir=.rsync-partial",
+                "--verbose",
                 "--out-format=%l %f",
                 self.testsource,
                 self.testdest,
@@ -67,14 +68,21 @@ class TestEngine(BasicSetup):
 
     def test_args(self):
         r = rsyncWrapper(self.minimal_options)
-        expected = ["/usr/bin/rsync", "--delete", "--archive",
-            "--one-file-system", "--partial-dir=.rsync-partial",
-            "--out-format=%l %f", self.testsource]
+        expected = [
+            "/usr/bin/rsync",
+            "--delete",
+            "--archive",
+            "--one-file-system",
+            "--partial-dir=.rsync-partial",
+            "--verbose",
+            "--out-format=%l %f",
+            self.testsource,
+            ]
         self.assertEqual(r.args, expected)
 
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
         options.update(self.minimal_options)
-        expected = expected[0:6]
+        expected = expected[0:7]
         expected += ["--bwlimit=30", "root@machine:"+self.testsource]
         r = rsyncWrapper(options)
         self.assertEqual(r.args, expected)

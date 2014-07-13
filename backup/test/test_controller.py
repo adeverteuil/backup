@@ -42,6 +42,6 @@ class TestController(BasicSetup):
         self.assertEqual(os.listdir(self.testdest), ["host_1_0"])
         dir = os.listdir("host_1_0")[0]
         self.assertEqual(
-            sorted(os.listdir(self.testsource)),
+            sorted(os.listdir(self.testsource)+["backup.log"]),
             sorted(os.listdir(os.path.join("host_1_0", dir))),
             )

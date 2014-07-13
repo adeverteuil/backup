@@ -48,7 +48,12 @@ class Controller:
             self._run()
         except:
             errtype, errval, tb = sys.exc_info()
-            self._logger.error(errval.args[0])
+            self._logger.error(
+                "{}({})".format(
+                    errtype.__name__,
+                    errval.args[0],
+                    )
+                )
             self._logger.debug(
                 "".join(["Traceback:\n"] + traceback.format_tb(tb))
                 )
@@ -58,18 +63,23 @@ class Controller:
 
     def _run(self):
         config = self.config
+        # Save all the logging done so far. There will be a FileHandler created
+        # for each host. All of them will have this log_header written to them.
+        self.log_header = handlers['memory'].stream.read()
         for host in config.defaults()['hosts'].split(" "):
-            self._logger.info("Processing {}.".format(host))
             thisconfig = config[host]
             dest = os.path.join(thisconfig['dest'], host)
             hourlies = int(thisconfig['hourlies'])
             dailies = int(thisconfig['dailies'])
+            self._prepare_logfile(dest)
+            self._logger.info("Processing {}.".format(host))
             if hourlies > 0:
                 self._logger.info("Starting hourly cycle")
                 cycle = Cycle(dest, "hourly")
                 rsync = rsyncWrapper(thisconfig)
                 cycle.create_new_snapshot(rsync)
                 cycle.purge(hourlies)
+                self._move_logfile(cycle.snapshots[0].path)
             if dailies > 0:
                 self._logger.info("Starting daily cycle")
                 cycle = Cycle(dest, "daily")
@@ -91,7 +101,49 @@ class Controller:
                     # Create dailies with rsync.
                     rsync = rsyncWrapper(thisconfig)
                     cycle.create_new_snapshot(rsync)
+                    self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
+
+    def _prepare_logfile(self, path):
+        """Create a log file handler and add it to the root logger.
+
+        All the logging done so far was memorized. Just after the handler is
+        created and before any further logging, we write this log header in
+        the log file.
+        """
+        logfile = os.path.join(path, "backup.log")
+        handlers['file'] = logging.FileHandler(logfile)
+        handlers['file'].logfile = logfile
+        handlers['file'].setFormatter(formatters['file'])
+        handlers['file'].setLevel(logging.DEBUG)
+        handlers['file'].acquire()
+        try:
+            handlers['file'].stream.write(self.log_header)
+        finally:
+            handlers['file'].release()
+        logging.getLogger().addHandler(handlers['file'])
+        self._logger.debug("Log file {} created.".format(path))
+
+
+    def _move_logfile(self, path):
+        """Move the log file to the snapshot directory.
+
+        After the processing of Cycle().create_new_snapshot(), this method is
+        called to close the file handler, and move the file to the snapshot
+        directory.
+        """
+        self._logger.debug("Moving log file to {}.".format(path))
+        logging.getLogger().removeHandler(handlers['file'])
+        handlers['file'].acquire()
+        try:
+            handlers['file'].close()
+            os.rename(
+                handlers['file'].logfile,  # Set by me in _prepare_logfile.
+                os.path.join(path, "backup.log"),
+                )
+        finally:
+            handlers['file'].release()
+        del handlers['file']
 
     def _sanity_checks(self):
         config = self.config

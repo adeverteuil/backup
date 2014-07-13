@@ -63,6 +63,7 @@ class rsyncWrapper:
             "--archive",
             "--one-file-system",
             "--partial-dir=.rsync-partial",
+            "--verbose",
             "--out-format=%l %f",
             ]
         if 'bwlimit' in options:
