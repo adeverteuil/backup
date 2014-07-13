@@ -5,7 +5,7 @@ Feature: Provide a logging system
 
     @wip
     Scenario: A backup from the command line
-        When I invoke backup without parameters
+        When I invoke backup with the arguments "-v"
         Then the program should exit 0
         And I should see "sending incremental"
         And I should see "total size is"

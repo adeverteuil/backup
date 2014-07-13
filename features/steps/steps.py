@@ -9,7 +9,7 @@ def step_impl(context, dir):
 
 @when('I invoke backup without parameters')
 def step_impl(context):
-    context.call_app("-vv")
+    context.call_app()
     print(context.output)
 
 @when("I invoke backup with the arguments \"{args}\"")
