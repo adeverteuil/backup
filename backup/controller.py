@@ -59,7 +59,10 @@ class Controller(_logging.Logging):
                 "".join(["Traceback:\n"] + traceback.format_tb(tb))
                 )
             errors = 1
-        self._logger.info("Exiting normally")
+        if errors:
+            self._logger.info("Exiting with errors.")
+        else:
+            self._logger.info("Exiting normally.")
         return errors
 
     def _run(self):
