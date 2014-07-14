@@ -45,6 +45,7 @@ import os
 import os.path
 import sys
 
+from . import _logging
 from .version import __version__
 
 
@@ -72,27 +73,6 @@ DEFAULTS = {
     'dailies': "31",
     'warn bytes transferred': str(1 * 10**8),  # 100MB
     }
-
-
-formatters = {
-    'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
-    'memory': logging.Formatter("%(message)s"),
-    'file': logging.Formatter(
-        "%(asctime)s  %(name)s %(levelname)s: %(message)s",
-        ),
-    }
-
-
-handlers = {
-    'stream': logging.StreamHandler(stream=sys.stdout),
-    # Create an in-memory stream handler for output post-processing,
-    # only adding it to the logger if option -q is used.
-    'memory': logging.StreamHandler(stream=io.StringIO()),
-    }
-handlers['stream'].setFormatter(formatters['stream'])
-handlers['stream'].setLevel(logging.WARNING)
-handlers['memory'].setFormatter(formatters['memory'])
-handlers['memory'].setLevel(logging.INFO)
 
 
 class Configuration:
@@ -195,10 +175,10 @@ class Configuration:
         lvl = "WARNING"
         if self.args.verbose:
             if self.args.verbose >= 2:
-                handlers['stream'].setLevel(logging.DEBUG)
+                _logging.handlers['stream'].setLevel(logging.DEBUG)
                 lvl = "DEBUG"
             elif self.args.verbose == 1:
-                handlers['stream'].setLevel(logging.INFO)
+                _logging.handlers['stream'].setLevel(logging.INFO)
                 lvl = "INFO"
         self._logger.debug("Log level set to {}".format(lvl))
 

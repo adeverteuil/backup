@@ -23,13 +23,14 @@ import logging
 import os.path
 import traceback
 
+from . import _logging
 from .config import *
 from .cycle import Cycle
 from .engine import rsyncWrapper
 
 
 def main():
-    logging.getLogger().addHandler(handlers['stream'])
+    logging.getLogger().addHandler(_logging.handlers['stream'])
     exit(Controller(Configuration().configure()).run())
 
 
@@ -63,9 +64,10 @@ class Controller:
 
     def _run(self):
         config = self.config
-        # Save all the logging done so far. There will be a FileHandler created
-        # for each host. All of them will have this log_header written to them.
-        self.log_header = handlers['memory'].stream.read()
+        # Save all the logging done so far. There will be a FileHandler
+        # created for each host. All of them will have the content of
+        # log_header written to them.
+        self.log_header = _logging.handlers['memory'].stream.read()
         for host in config.defaults()['hosts'].split(" "):
             thisconfig = config[host]
             dest = os.path.join(thisconfig['dest'], host)
@@ -112,16 +114,17 @@ class Controller:
         the log file.
         """
         logfile = os.path.join(path, "backup.log")
-        handlers['file'] = logging.FileHandler(logfile)
-        handlers['file'].logfile = logfile
-        handlers['file'].setFormatter(formatters['file'])
-        handlers['file'].setLevel(logging.DEBUG)
-        handlers['file'].acquire()
+        handler = logging.FileHandler(logfile)
+        handler.logfile = logfile
+        handler.setFormatter(_logging.formatters['file'])
+        handler.setLevel(logging.DEBUG)
+        handler.acquire()
         try:
-            handlers['file'].stream.write(self.log_header)
+            handler.stream.write(self.log_header)
         finally:
-            handlers['file'].release()
-        logging.getLogger().addHandler(handlers['file'])
+            handler.release()
+        logging.getLogger().addHandler(handler)
+        _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(path))
 
 
@@ -133,17 +136,18 @@ class Controller:
         directory.
         """
         self._logger.debug("Moving log file to {}.".format(path))
-        logging.getLogger().removeHandler(handlers['file'])
-        handlers['file'].acquire()
+        handler = _logging.handlers['file']
+        logging.getLogger().removeHandler(handler)
+        handler.acquire()
         try:
-            handlers['file'].close()
+            handler.close()
             os.rename(
-                handlers['file'].logfile,  # Set by me in _prepare_logfile.
+                handler.logfile,  # Set by me in _prepare_logfile.
                 os.path.join(path, "backup.log"),
                 )
         finally:
-            handlers['file'].release()
-        del handlers['file']
+            handler.release()
+        del _logging.handlers['file']
 
     def _sanity_checks(self):
         config = self.config

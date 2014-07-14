@@ -17,12 +17,11 @@
 
 """Logging configuration.
 
-This module configures three logging handlers:
+This module configures two logging handlers:
 
     1.  A stream handler that writes to stdout and stderr;
-    2.  A memory handler that memorizes output from the rsync subprocess for
-        post-processing;
-    3.  A file handler that writes to a log file.
+    2.  A memory handler that memorizes output for deferred writing to a
+        log file who's path is known at runtime.
 
 
 There are also the following module level functions:
@@ -36,8 +35,32 @@ There are also the following module level functions:
 """
 
 
+import io
 import logging
 import shutil
+import sys
+
+
+formatters = {
+    'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
+    'file': logging.Formatter(
+        "%(asctime)s  %(name)s %(levelname)s: %(message)s",
+        ),
+    }
+
+
+handlers = {
+    'stream': logging.StreamHandler(stream=sys.stdout),
+    # Create an in-memory stream handler for deferred writing into a log file.
+    # A FileHandler will be created by the engine.Controller class. However,
+    # it's file location is only known a runtime. This handler will hold
+    # log record that will be written to the file when it is created.
+    'memory': logging.StreamHandler(stream=io.StringIO()),
+    }
+handlers['stream'].setFormatter(formatters['stream'])
+handlers['stream'].setLevel(logging.WARNING)
+handlers['memory'].setFormatter(formatters['file'])
+handlers['memory'].setLevel(logging.INFO)
 
 
 def add_file_handler(filename):
