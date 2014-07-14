@@ -75,18 +75,18 @@ DEFAULTS = {
     }
 
 
-class Configuration:
+class Configuration(_logging.Logging):
 
     """Collects options from command line arguments and configuration files."""
 
-    def __init__(self, argv=None, environ=None):
+    def __init__(self, argv=None, environ=None, **kwargs):
         """Instantiates ConfigParser with defaults and ArgumentParser.
 
         Parameters:
         argv -- If not None, will be parsed instead of sys.argv[1:].
         environ -- If not None, will be used insted of os.environ.
         """
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        super().__init__(**kwargs)
         self.argv = argv if argv is not None else sys.argv[1:]
         self.args = None  # This will hold the return value of parse_args().
         self.environ = environ if environ is not None else os.environ

@@ -34,12 +34,12 @@ def main():
     exit(Controller(Configuration().configure()).run())
 
 
-class Controller:
+class Controller(_logging.Logging):
 
     """Makes sense of configuration options and orchestrates backups."""
 
-    def __init__(self, config):
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+    def __init__(self, config, **kwargs):
+        super().__init__(**kwargs)
         self.config = config
 
     def run(self):

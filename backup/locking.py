@@ -86,6 +86,9 @@ class Lockable:
     Subclasses are expected to define the lockfile and path instance
     attributes before calling methods defined here.
 
+    Optionally, if subclasses define a _logger attribute, methods of this
+    class will make use of it.
+
     Lockable has no constructor.
     """
 

@@ -41,6 +41,7 @@ import shutil
 import sys
 
 
+from . import _logging
 from .locking import Lockable
 
 
@@ -64,7 +65,7 @@ _status_lookup = {
     }
 
 
-class Snapshot(Lockable):
+class Snapshot(_logging.Logging, Lockable):
 
     """Abstraction object for a backup snapshot.
 
@@ -135,8 +136,8 @@ class Snapshot(Lockable):
                 )
         return Snapshot(dir, interval, timestamp)
 
-    def __init__(self, dir, interval, timestamp=None):
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+    def __init__(self, dir, interval, timestamp=None, **kwargs):
+        super().__init__(**kwargs)
         self.dir = dir
         self.interval = interval
         self._status = None

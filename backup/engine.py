@@ -33,16 +33,18 @@ import subprocess
 import time
 import threading
 
+from . import _logging
 
-class rsyncWrapper:
+
+class rsyncWrapper(_logging.Logging):
 
     """Manages an rsync subprocess and threads that log its output streams."""
 
-    def __init__(self, options):
+    def __init__(self, options, **kwargs):
         """
         options -- one section of a ConfigParser.
         """
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        super().__init__(**kwargs)
         self.options = options
         # This event is passed to PipeLogger threads. While waiting for the
         # subprocess to finish, the main thread should handle KeyboardInterrupt

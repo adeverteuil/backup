@@ -27,19 +27,20 @@ import logging
 import os.path
 import stat
 
+from . import _logging
 from .locking import Lockable
 from .snapshot import *
 
 
-class Cycle(Lockable):
+class Cycle(Lockable, _logging.Logging):
 
     """Manages a group of Snapshots of the same interval."""
 
-    def __init__(self, dir, interval):
+    def __init__(self, dir, interval, **kwargs):
         #TODO if interval is "daily", check if the las snapshot is >1 day ago.
         # Hourly backups will be regulated by the systemd .timer unit or
         # cron job.
-        self._logger = logging.getLogger(__name__+"."+self.__class__.__name__)
+        super().__init__(**kwargs)
         self.dir = dir
         self.interval = interval
         self.snapshots = []

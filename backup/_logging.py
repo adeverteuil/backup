@@ -23,6 +23,9 @@ This module configures two logging handlers:
     2.  A memory handler that memorizes output for deferred writing to a
         log file who's path is known at runtime.
 
+The following class is defined:
+    Logging
+        Subclass for any class that could use a _logger attribute.
 
 There are also the following module level functions:
     add_file_handler():
@@ -90,3 +93,18 @@ def move_log_file(dest):
         # handle a record is called.
     finally:
         h.release()
+
+
+class Logging:
+
+    """Subclass for any class that could use a _logger attribute."""
+
+    def __init__(self, *args, **kwargs):
+        """Define a _logger attribute in a uniform way across the program."""
+        super().__init__(*args, **kwargs)
+        # The name of the logger is the qualified name of the subclass.
+        # For example, if the C class in the m.s module subclasses Logging,
+        # Its _logger will be called "m.s.C".
+        self._logger = logging.getLogger(
+            self.__module__+"."+self.__class__.__name__
+            )
