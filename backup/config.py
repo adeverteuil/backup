@@ -72,6 +72,7 @@ DEFAULTS = {
     'hourlies': "24",
     'dailies': "31",
     'warn bytes transferred': str(1 * 10**8),  # 100MB
+    'dry-run': "False",
     }
 
 
@@ -115,8 +116,12 @@ class Configuration(_logging.Logging):
                   " verbosity level DEBUG."),
             )
         parser.add_argument("--configfile", "-c",
-                            help="Use this file rather than the default.",
-                            )
+            help="Use this file rather than the default.",
+            )
+        parser.add_argument("--dry-run", "-n",
+            help="Perform a trial run with no changes made.",
+            action="store_true",
+            )
         parser.add_argument("hosts",
             nargs="*",
             help=("List of hosts to do a backup of. Hosts are defined through "
@@ -198,3 +203,4 @@ class Configuration(_logging.Logging):
         # --configfile has already been parsed in _read_config().
         if self.args.hosts:
             self.config.defaults()['hosts'] = " ".join(self.args.hosts)
+        self.config.defaults()['dry-run'] = str(self.args.dry_run)

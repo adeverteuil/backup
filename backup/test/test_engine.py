@@ -15,6 +15,7 @@
 #   along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
+import configparser
 import io
 import threading
 import unittest
@@ -28,11 +29,14 @@ class TestEngine(BasicSetup):
 
     def setUp(self):
         super().setUp()
-        self.minimal_options = {
-            'rsync': "/usr/bin/rsync",
-            'sourcedirs': self.testsource,
-            'dest': self.testdest,
-            }
+        self.minimal_options = configparser.ConfigParser(
+            defaults={
+                'rsync': "/usr/bin/rsync",
+                'sourcedirs': self.testsource,
+                'dest': self.testdest,
+                'dry-run': "False",
+                }
+            )['DEFAULT']
 
     def test_init(self):
         r = rsyncWrapper(object())
@@ -81,10 +85,10 @@ class TestEngine(BasicSetup):
         self.assertEqual(r.args, expected)
 
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
-        options.update(self.minimal_options)
+        self.minimal_options.update(options)
         expected = expected[0:7]
         expected += ["--bwlimit=30", "root@machine:"+self.testsource]
-        r = rsyncWrapper(options)
+        r = rsyncWrapper(self.minimal_options)
         self.assertEqual(r.args, expected)
 
     def test_sync_to(self):
@@ -96,6 +100,10 @@ class TestEngine(BasicSetup):
             sorted(os.listdir(self.testsource)),
             sorted(os.listdir(self.testdest))
             )
+
+    def test_dry_run(self):
+        self.minimal_options['dry-run'] = "True"
+        r = rsyncWrapper(self.minimal_options)
 
 
 class TestPipeLogger(BasicSetup):

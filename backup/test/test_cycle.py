@@ -40,7 +40,7 @@ class TestCycle(BasicSetup):
         cycle = Cycle(self.testdest, "hourly")
         configuration = Configuration(argv=["-c", self.configfile], environ={})
         config = configuration.configure()
-        rsync = rsyncWrapper(config.defaults())
+        rsync = rsyncWrapper(config['default'])
         with cycle:
             cycle.create_new_snapshot(rsync)
         dest = glob.glob("{}/hourly.????-??-??T??:??".format(self.testdest))[0]
@@ -62,7 +62,7 @@ class TestCycle(BasicSetup):
             argv=["-c", self.configfile],
             environ={},
             ).configure()
-        rsync = rsyncWrapper(config.defaults())
+        rsync = rsyncWrapper(config['default'])
         # Go.
         with cycle:
             cycle.create_new_snapshot(rsync)
@@ -96,7 +96,7 @@ class TestCycle(BasicSetup):
             argv=["-c", self.configfile],
             environ={},
             ).configure()
-        rsync = rsyncWrapper(config.defaults())
+        rsync = rsyncWrapper(config['default'])
         cycle.create_new_snapshot(rsync)
         self.assertEqual(
             cycle.get_linkdest().path,
@@ -129,7 +129,7 @@ class TestCycle(BasicSetup):
             argv=["-c", self.configfile],
             environ={},
             ).configure()
-        rsync = rsyncWrapper(config.defaults())
+        rsync = rsyncWrapper(config['default'])
         cycle_h.create_new_snapshot(rsync)
         cycle_d.archive_from(cycle_h)
         self.assertEqual(

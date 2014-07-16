@@ -88,3 +88,12 @@ class TestConfiguration(BasicSetup):
         c.args.configfile = self.configfile
         c._read_config()
         self.assertEqual(c.config.defaults()['dest'], self.testdest)
+
+    def test_merge_args_with_config(self):
+        c = Configuration(argv=["--dry-run"])
+        c._parse_args()
+        c.args.configfile = self.configfile
+        c._read_config()
+        self.assertEqual(c.config.getboolean('default', 'dry-run'), False)
+        c._merge_args_with_config()
+        self.assertEqual(c.config.getboolean('default', 'dry-run'), True)

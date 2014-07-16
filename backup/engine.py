@@ -70,6 +70,8 @@ class rsyncWrapper(_logging.Logging):
             ]
         if 'bwlimit' in options:
             args.append("--bwlimit={}".format(options['bwlimit']))
+        if options.getboolean('dry-run'):
+            args.append("--dry-run")
         #TODO --exclude_from and --filter files
         sourcedirs = options['sourcedirs'].split(":")
         if 'sourcehost' in options:
