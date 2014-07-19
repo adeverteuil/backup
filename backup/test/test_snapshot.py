@@ -197,6 +197,3 @@ class TestSnapshot(BasicSetup):
         self.assertEqual(snapshots[1].status, SYNCING)
         self.assertEqual(snapshots[2].status, COMPLETE)
         self.assertEqual(snapshots[3].status, DELETING)
-
-    def test_dry_run_init(self):
-        s = Snapshot(self.testdest, "interval", dry_run=True)
