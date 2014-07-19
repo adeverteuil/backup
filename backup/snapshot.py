@@ -65,14 +65,15 @@ _status_lookup = {
     }
 
 
-class Snapshot(_logging.Logging, Lockable):
+class _Snapshot(_logging.Logging, Lockable):
 
     """Abstraction object for a backup snapshot.
 
     Parameters:
         dir -- Path to the directory where snapshots are located.
         interval -- Name of the backup cycle (i. e. hourly, daily, etc.)
-        index -- Index number of the individual snapshot in the cycle.
+        timestamp -- The datetime of the ISO8601 encoded suffix.
+        dry_run -- Don't change the filesystem if True.
 
     The constructor's parameters are components to build the snapshot's path:
         /dir/interval.timestamp
@@ -194,13 +195,13 @@ class Snapshot(_logging.Logging, Lockable):
         newstatus = self.statusfile
         if os.access(oldlock, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldlock, newlock))
-            os.rename(oldlock, newlock)
+            self._rename(oldlock, newlock)
         if os.access(oldpath, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldpath, newpath))
-            os.rename(oldpath, newpath)
+            self._rename(oldpath, newpath)
         if os.access(oldstatus, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldstatus, newstatus))
-            os.rename(oldstatus, newstatus)
+            self._rename(oldstatus, newstatus)
         self._logger.debug("timestamp set to {}.".format(self.stimestamp))
 
     @property
@@ -250,11 +251,10 @@ class Snapshot(_logging.Logging, Lockable):
             msg = "Cannot change the status of a deleted snapshot."
             raise RuntimeError(msg)
         if value in (SYNCING, DELETING):
-            with open(self.statusfile, "w") as f:
-                f.write(str(value))
+            self._write(self.statusfile, str(value))
         else:
             try:
-                os.unlink(self.statusfile)
+                self._unlink(self.statusfile)
             except FileNotFoundError:
                 pass
         self._status = value
@@ -283,7 +283,7 @@ class Snapshot(_logging.Logging, Lockable):
         if self.status != VOID:
             msg = "status is {}, must be VOID.".format(self.status)
             raise RuntimeError(msg)
-        os.mkdir(self.path)
+        self._mkdir(self.path)
         self._logger.debug("Created directory {}.".format(self.path))
         self.status = BLANK  # VOID -> BLANK
 
@@ -292,6 +292,59 @@ class Snapshot(_logging.Logging, Lockable):
             raise RuntimeError("Deleting a VOID snapshot.")
         self._logger.info("Deleting {}.".format(self.path))
         self.status = DELETING
-        shutil.rmtree(self.path)
+        self._rmtree(self.path)
         self.status = DELETED
         self._logger.info("Deletion complete.")
+
+
+class _ActiveSnapshotBase:
+
+    def _mkdir(self, path):
+        os.mkdir(path)
+
+    def _rmtree(self, path):
+        shutil.rmtree(path)
+
+    def _rename(self, old, new):
+        os.rename(old, new)
+
+    def _write(self, file, content):
+        with open(file, "w") as f:
+            f.write(content)
+
+    def _unlink(self, file):
+        os.unlink(file)
+
+
+# For ease of maintenance, _NeuteredSnapshotBase is generated dynamically
+# to resemble _ActiveSnapshotBase's API. Any methods added or deleted are
+# mirrored here with a NOOP lambda function.
+_NeuteredSnapshotBase = type(
+    "_NeuteredSnapshotBase",
+    (),
+    {k: lambda *args: None for k in _ActiveSnapshotBase.__dict__.keys()},
+    )
+
+
+class Snapshot(_Snapshot):
+
+    """Class factory class.
+
+    Inherits _Snapshot for its staticmethods.
+    """
+
+    cache = {}
+
+    def __new__(cls, *args, dry_run=False, **kwargs):
+        if dry_run in cls.cache:
+            snapshot_class = cls.cache[dry_run]
+        else:
+            if dry_run:
+                BaseClass = _NeuteredSnapshotBase
+            else:
+                BaseClass = _ActiveSnapshotBase
+            bases = (_Snapshot, BaseClass)
+            snapshot_class = type(cls.__name__, bases, {})
+        snapshot = snapshot_class(*args, **kwargs)
+        cls.cache[dry_run] = snapshot_class
+        return snapshot
