@@ -30,7 +30,7 @@ Classes:
 """
 
 
-class modifies_filesystem:
+class if_dry_run_False:
 
     """Decorator + descriptor for flagging methods that modify the filesystem.
 
@@ -48,7 +48,7 @@ class modifies_filesystem:
     ...         self._create(path)
     ...         print(path, "created.")
     ...
-    ...     @modifies_filesystem
+    ...     @writes_to_filesystem
     ...     def _create(self, path):
     ...         open(path, "w").close()
     ...
@@ -83,7 +83,7 @@ class _wrapper:
         self.subj = subj
 
     def __call__(self, *args, **kwargs):
-        # Runs modifies_filesystem.__call__
+        # Runs writes_to_filesystem.__call__
         return self.desc(self.subj, *args, **kwargs)
 
     def alternative(self, func):  # On @wrapped_func.alternative

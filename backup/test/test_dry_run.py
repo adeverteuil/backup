@@ -25,12 +25,12 @@ class TestWriter:
 
     """Dummy class to test the @modifies_filesystem decorator."""
 
-    @modifies_filesystem
+    @if_dry_run_False
     def create_file(self, path):
         with open(path, "w") as f:
             f.write("Hello")
 
-    @modifies_filesystem
+    @if_dry_run_False
     def create_file_with_alt(self, path):
         with open(path, "w") as f:
             f.write("Hello")
@@ -42,14 +42,10 @@ class TestWriter:
 
 class Test_modifies_filesystem(BasicSetup):
 
-    def tearDown(self):
-        super().tearDown()
-        modifies_filesystem.dry_run = False
-
     def test_function(self):
-        func = modifies_filesystem(lambda a: a+1)
+        func = if_dry_run_False(lambda a: a+1)
         self.assertEqual(func(1), 2)
-        modifies_filesystem.dry_run = True
+        if_dry_run_False.dry_run = True
         self.assertIsNone(func(1))
 
     def test_class(self):
@@ -63,7 +59,7 @@ class Test_modifies_filesystem(BasicSetup):
         os.unlink(spam)
         # Test when dry_run==True
         # NOOP method
-        modifies_filesystem.dry_run = True
+        if_dry_run_False.dry_run = True
         testwriter.create_file(spam)
         with self.assertRaises(OSError):
             open(spam)
