@@ -14,6 +14,11 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# With code taken from:
+# Lutz, Mark. 2013. Learning Python, 5th Edition. O'Reilly Media Inc.
+# http://proquestcombo.safaribooksonline.com.res.banq.qc.ca/book/programming/python/9781449355722
+# (Subscription to banq.qc.ca or safaribooksonline.com required)
+
 
 """This module provides tools to add support for the dry_run option.
 
