@@ -46,7 +46,7 @@ import os.path
 import sys
 
 from . import _logging
-from .dry_run import if_dry_run_False
+from .dry_run import if_not_dry_run
 from .version import __version__
 
 
@@ -204,4 +204,4 @@ class Configuration(_logging.Logging):
         if self.args.hosts:
             self.config.defaults()['hosts'] = " ".join(self.args.hosts)
         self.config.defaults()['dry-run'] = str(self.args.dry_run)
-        if_dry_run_False.dry_run = self.args.dry_run
+        if_not_dry_run.dry_run = self.args.dry_run

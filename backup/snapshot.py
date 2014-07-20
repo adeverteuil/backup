@@ -42,7 +42,7 @@ import sys
 
 
 from . import _logging
-from .dry_run import if_dry_run_False
+from .dry_run import if_not_dry_run
 from .locking import Lockable
 
 
@@ -204,7 +204,7 @@ class Snapshot(_logging.Logging, Lockable):
             self._rename(oldstatus, newstatus)
         self._logger.debug("timestamp set to {}.".format(self.stimestamp))
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _rename(self, old, new):
         os.rename(old, new)
 
@@ -234,7 +234,7 @@ class Snapshot(_logging.Logging, Lockable):
         self._status_file_check()
         return self._status
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _status_file_check(self):
         if self._status in (SYNCING, DELETING):
             with open(self.statusfile) as f:
@@ -267,12 +267,12 @@ class Snapshot(_logging.Logging, Lockable):
                 pass
         self._status = value
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _create_file(self, path, content):
         with open(path, "w") as f:
             f.write(content)
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _unlink(self, path):
         os.unlink(path)
 
@@ -304,7 +304,7 @@ class Snapshot(_logging.Logging, Lockable):
         self._logger.debug("Created directory {}.".format(self.path))
         self.status = BLANK  # VOID -> BLANK
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _mkdir(self, path):
         os.mkdir(self.path)
 
@@ -317,6 +317,6 @@ class Snapshot(_logging.Logging, Lockable):
         self.status = DELETED
         self._logger.info("Deletion complete.")
 
-    @if_dry_run_False
+    @if_not_dry_run
     def _rmtree(self, path):
         shutil.rmtree(self.path)

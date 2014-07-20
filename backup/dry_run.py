@@ -30,7 +30,7 @@ Classes:
 """
 
 
-class if_dry_run_False:
+class if_not_dry_run:
 
     """Decorator + descriptor for flagging methods that modify the filesystem.
 

@@ -20,7 +20,7 @@ import unittest.mock
 
 from .basic_setup import BasicSetup
 from ..config import *
-from ..dry_run import if_dry_run_False
+from ..dry_run import if_not_dry_run
 
 
 class TestConfiguration(BasicSetup):
@@ -94,13 +94,13 @@ class TestConfiguration(BasicSetup):
         c = Configuration(argv=["--dry-run", "spamhost"])
         c._parse_args()
         c._merge_args_with_config()
-        self.assertTrue(if_dry_run_False.dry_run)
+        self.assertTrue(if_not_dry_run.dry_run)
         self.assertEqual(c.config.defaults()['dry-run'], "True")
         self.assertEqual(c.config.defaults()['hosts'], "spamhost")
-        if_dry_run_False.dry_run = False
+        if_not_dry_run.dry_run = False
         c = Configuration(argv=[])
         c._parse_args()
         c._merge_args_with_config()
-        self.assertFalse(if_dry_run_False.dry_run)
+        self.assertFalse(if_not_dry_run.dry_run)
         with self.assertRaises(KeyError):
             c.config.defaults()['hosts']

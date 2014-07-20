@@ -24,7 +24,7 @@ import unittest
 from .basic_setup import BasicSetup
 from ..snapshot import *
 from ..locking import *
-from ..dry_run import if_dry_run_False
+from ..dry_run import if_not_dry_run
 
 
 class TestSnapshot(BasicSetup):
@@ -202,16 +202,16 @@ class TestSnapshot(BasicSetup):
     def test_dry_run(self):
         # Directory must not be created.
         s = Snapshot(self.testdest, "interval", datetime.datetime(2014, 7, 1))
-        if_dry_run_False.dry_run = True
+        if_not_dry_run.dry_run = True
         s.mkdir()
         s.status = SYNCING
         self.assertEqual(os.listdir(self.testdest), [])
         # Reset
-        if_dry_run_False.dry_run = False
+        if_not_dry_run.dry_run = False
         s = Snapshot(self.testdest, "interval", datetime.datetime(2014, 7, 1))
         s.mkdir()
         # Directory must not be deleted.
-        if_dry_run_False.dry_run = True
+        if_not_dry_run.dry_run = True
         s.delete()
         self.assertEqual(
             os.listdir(self.testdest),
