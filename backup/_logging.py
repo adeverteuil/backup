@@ -63,7 +63,7 @@ handlers = {
 handlers['stream'].setFormatter(formatters['stream'])
 handlers['stream'].setLevel(logging.WARNING)
 handlers['memory'].setFormatter(formatters['file'])
-handlers['memory'].setLevel(logging.INFO)
+handlers['memory'].setLevel(logging.DEBUG)
 
 
 def add_file_handler(filename):

@@ -185,6 +185,7 @@ class Configuration(_logging.Logging):
             elif self.args.verbose == 1:
                 _logging.handlers['stream'].setLevel(logging.INFO)
                 lvl = "INFO"
+        logger.addHandler(_logging.handlers['memory'])
         self._logger.debug("Log level set to {}".format(lvl))
 
     def _read_config(self):

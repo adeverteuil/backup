@@ -71,7 +71,7 @@ class Controller(_logging.Logging):
         # Save all the logging done so far. There will be a FileHandler
         # created for each host. All of them will have the content of
         # log_header written to them.
-        self.log_header = _logging.handlers['memory'].stream.read()
+        self.log_header = _logging.handlers['memory'].stream.getvalue()
         for host in config.defaults()['hosts'].split(" "):
             thisconfig = config[host]
             dest = os.path.join(thisconfig['dest'], host)
@@ -120,7 +120,7 @@ class Controller(_logging.Logging):
         """
         logfile = os.path.join(path, "backup.log")
         handler = logging.FileHandler(logfile)
-        handler.logfile = logfile
+        handler.logfile = logfile  # For use in _move_logfile method.
         handler.setFormatter(_logging.formatters['file'])
         handler.setLevel(logging.DEBUG)
         handler.acquire()
