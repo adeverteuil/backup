@@ -103,11 +103,16 @@ class Cycle(Lockable, _logging.Logging):
             self.snapshots.pop(index).delete()
 
     def purge(self, maxnumber):
-        """Delete snapshots exceeding maxnumber.
+        """Delete snapshots exceeding maxnumber of complete backups.
 
         Parameters:
             maxnumber -- An int, the number of snapshots to keep.
         """
+        # We want to keep maxnumber of complete bakups. Therefore, for each
+        # snapshot that are "dirty", we increment maxnumber by 1.
+        for snapshot in self.snapshots:
+            if snapshot.status != COMPLETE:
+                maxnumber += 1
         for snapshot in self.snapshots[maxnumber:]:
             with snapshot:
                 snapshot.status = DELETING

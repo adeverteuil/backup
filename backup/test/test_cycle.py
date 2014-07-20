@@ -155,3 +155,22 @@ class TestCycle(BasicSetup):
             os.listdir(self.testdest),
             ["hourly.2014-07-04T00:00"],
             )
+
+    def test_purge_with_incomplete_snapshots(self):
+        os.chdir(self.testdest)
+        for d in range(1, 5):
+            os.mkdir("hourly.2014-07-{:02}T00:00".format(d))
+            open("hourly.2014-07-{:02}T00:00/file".format(d), "w").close()
+        # Mark 1 snapshot dirty.
+        with open(".hourly.2014-07-03T00:00.status", "w") as f:
+            f.write(str(DELETING))
+        c = Cycle(self.testdest, "hourly")
+        c.purge(1)
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            [
+                ".hourly.2014-07-03T00:00.status",
+                "hourly.2014-07-03T00:00",
+                "hourly.2014-07-04T00:00",
+                ],
+            )
