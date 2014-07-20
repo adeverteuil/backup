@@ -51,9 +51,9 @@ class Controller(_logging.Logging):
         except:
             errtype, errval, tb = sys.exc_info()
             self._logger.error(
-                "{}({})".format(
+                "{}{}".format(
                     errtype.__name__,
-                    errval.args[0],
+                    errval.args,
                     )
                 )
             self._logger.debug(
