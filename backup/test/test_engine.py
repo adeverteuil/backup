@@ -104,6 +104,12 @@ class TestEngine(BasicSetup):
     def test_dry_run(self):
         self.minimal_options['dry-run'] = "True"
         r = rsyncWrapper(self.minimal_options)
+        self.assertIn("--dry-run", r.args)
+        r.sync_to(self.testdest)
+        r.wait()
+        r.close_pipes()
+        self.assertEqual(os.listdir(self.testdest), [])
+        self.assertEqual(r.process.returncode, 0)
 
 
 class TestPipeLogger(BasicSetup):
