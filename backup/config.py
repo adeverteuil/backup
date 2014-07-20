@@ -166,8 +166,6 @@ class Configuration(_logging.Logging):
     def _parse_args(self):
         """Adds arguments to the ArgumentParser instance and parses args."""
         self.args = self.argumentparser.parse_args(self.argv)
-        if self.args.dry_run:
-            if_dry_run_False.dry_run = True
         self._logger.debug("Parsed args: {}".format(vars(self.args)))
 
     def _do_early_logging_config(self):
@@ -205,3 +203,5 @@ class Configuration(_logging.Logging):
         # --configfile has already been parsed in _read_config().
         if self.args.hosts:
             self.config.defaults()['hosts'] = " ".join(self.args.hosts)
+        self.config.defaults()['dry-run'] = str(self.args.dry_run)
+        if_dry_run_False.dry_run = self.args.dry_run

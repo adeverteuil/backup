@@ -91,10 +91,16 @@ class TestConfiguration(BasicSetup):
         self.assertEqual(c.config.defaults()['dest'], self.testdest)
 
     def test_merge_args_with_config(self):
-        c = Configuration(argv=["--dry-run"])
+        c = Configuration(argv=["--dry-run", "spamhost"])
         c._parse_args()
+        c._merge_args_with_config()
         self.assertTrue(if_dry_run_False.dry_run)
+        self.assertEqual(c.config.defaults()['dry-run'], "True")
+        self.assertEqual(c.config.defaults()['hosts'], "spamhost")
         if_dry_run_False.dry_run = False
         c = Configuration(argv=[])
         c._parse_args()
+        c._merge_args_with_config()
         self.assertFalse(if_dry_run_False.dry_run)
+        with self.assertRaises(KeyError):
+            c.config.defaults()['hosts']
