@@ -24,6 +24,7 @@ import unittest
 from .basic_setup import BasicSetup
 from ..snapshot import *
 from ..locking import *
+from ..dry_run import if_dry_run_False
 
 
 class TestSnapshot(BasicSetup):
@@ -197,3 +198,35 @@ class TestSnapshot(BasicSetup):
         self.assertEqual(snapshots[1].status, SYNCING)
         self.assertEqual(snapshots[2].status, COMPLETE)
         self.assertEqual(snapshots[3].status, DELETING)
+
+    def test_dry_run(self):
+        # Directory must not be created.
+        s = Snapshot(self.testdest, "interval", datetime.datetime(2014, 7, 1))
+        if_dry_run_False.dry_run = True
+        s.mkdir()
+        s.status = SYNCING
+        self.assertEqual(os.listdir(self.testdest), [])
+        # Reset
+        if_dry_run_False.dry_run = False
+        s = Snapshot(self.testdest, "interval", datetime.datetime(2014, 7, 1))
+        s.mkdir()
+        # Directory must not be deleted.
+        if_dry_run_False.dry_run = True
+        s.delete()
+        self.assertEqual(
+            os.listdir(self.testdest),
+            ["interval.2014-07-01T00:00"],
+            )
+        # Reset
+        s._status = BLANK
+        # Directory must not be renamed.
+        s.timestamp = datetime.datetime(2014, 7, 2)
+        self.assertEqual(
+            os.listdir(self.testdest),
+            ["interval.2014-07-01T00:00"],
+            )
+        # But the internal timestamp must still be changed.
+        self.assertEqual(
+            s.timestamp,
+            datetime.datetime(2014, 7, 2),
+            )

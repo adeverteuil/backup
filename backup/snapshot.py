@@ -42,6 +42,7 @@ import sys
 
 
 from . import _logging
+from .dry_run import if_dry_run_False
 from .locking import Lockable
 
 
@@ -194,14 +195,18 @@ class Snapshot(_logging.Logging, Lockable):
         newstatus = self.statusfile
         if os.access(oldlock, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldlock, newlock))
-            os.rename(oldlock, newlock)
+            self._rename(oldlock, newlock)
         if os.access(oldpath, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldpath, newpath))
-            os.rename(oldpath, newpath)
+            self._rename(oldpath, newpath)
         if os.access(oldstatus, os.F_OK):
             self._logger.debug("Moving {} to {}.".format(oldstatus, newstatus))
-            os.rename(oldstatus, newstatus)
+            self._rename(oldstatus, newstatus)
         self._logger.debug("timestamp set to {}.".format(self.stimestamp))
+
+    @if_dry_run_False
+    def _rename(self, old, new):
+        os.rename(old, new)
 
     @property
     def stimestamp(self):
@@ -226,11 +231,15 @@ class Snapshot(_logging.Logging, Lockable):
             DELETING : In the process of being removed from the filesystem.
             DELETED : Snapshot is deleted and can no longer change status.
         """
+        self._status_file_check()
+        return self._status
+
+    @if_dry_run_False
+    def _status_file_check(self):
         if self._status in (SYNCING, DELETING):
             with open(self.statusfile) as f:
                 filestatus = int(f.read())
                 assert filestatus == self._status, _status_lookup[filestatus]
-        return self._status
 
     @status.setter
     def status(self, value):
@@ -250,14 +259,22 @@ class Snapshot(_logging.Logging, Lockable):
             msg = "Cannot change the status of a deleted snapshot."
             raise RuntimeError(msg)
         if value in (SYNCING, DELETING):
-            with open(self.statusfile, "w") as f:
-                f.write(str(value))
+            self._create_file(self.statusfile, str(value))
         else:
             try:
-                os.unlink(self.statusfile)
+                self._unlink(self.statusfile)
             except FileNotFoundError:
                 pass
         self._status = value
+
+    @if_dry_run_False
+    def _create_file(self, path, content):
+        with open(path, "w") as f:
+            f.write(content)
+
+    @if_dry_run_False
+    def _unlink(self, path):
+        os.unlink(path)
 
     def infer_status(self):
         """Infer status by analyzing snapshot directory and status file."""
@@ -283,15 +300,23 @@ class Snapshot(_logging.Logging, Lockable):
         if self.status != VOID:
             msg = "status is {}, must be VOID.".format(self.status)
             raise RuntimeError(msg)
-        os.mkdir(self.path)
+        self._mkdir(self.path)
         self._logger.debug("Created directory {}.".format(self.path))
         self.status = BLANK  # VOID -> BLANK
+
+    @if_dry_run_False
+    def _mkdir(self, path):
+        os.mkdir(self.path)
 
     def delete(self):
         if self.status == VOID:
             raise RuntimeError("Deleting a VOID snapshot.")
         self._logger.info("Deleting {}.".format(self.path))
         self.status = DELETING
-        shutil.rmtree(self.path)
+        self._rmtree(self.path)
         self.status = DELETED
         self._logger.info("Deletion complete.")
+
+    @if_dry_run_False
+    def _rmtree(self, path):
+        shutil.rmtree(self.path)
