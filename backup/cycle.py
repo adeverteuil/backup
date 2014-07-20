@@ -164,17 +164,18 @@ class Cycle(Lockable, _logging.Logging):
         origin = cycle.get_linkdest()
         if origin is None:
             msg = "No {} snapshot to copy was found in {}.".format(
-                cycle.dir,
                 cycle.interval,
+                cycle.dir,
                 )
-            raise ValueError(msg)
+            self._logger.info(msg)
+            return
         if (len(self.snapshots) > 0 and
             origin.timestamp <= self.snapshots[0].timestamp):
             msg = "{} backup is as recent as {}.".format(
                 self.interval,
                 cycle.interval,
                 )
-            self._logger.debug(msg)
+            self._logger.info(msg)
             return
         msg = "Copying snapshot from {} cycle to {} cycle.".format(
             cycle.interval,
