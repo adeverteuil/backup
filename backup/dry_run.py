@@ -61,14 +61,11 @@ class if_not_dry_run:
 
     def __init__(self, func):  # On @ decorator.
         self.func = func
-        self.alt_func = None
+        self.alt_func = lambda *args, **kwargs: None
 
     def __call__(self, *args, **kwargs):  # On call to original function.
         if self.dry_run:
-            if self.alt_func is not None:
-                return self.alt_func(*args, **kwargs)
-            else:
-                return
+            return self.alt_func(*args, **kwargs)
         else:
             return self.func(*args, **kwargs)
 
