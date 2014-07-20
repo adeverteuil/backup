@@ -67,6 +67,7 @@ def _make_sources_list():
 
 DEFAULTS = {
     'configfile': "/etc/backup",
+    'configdir': "/etc/backup.d",
     'rsync': "/usr/bin/rsync",
     'sourcedirs': _make_sources_list(),
     'dest': "/root/var/backups",
@@ -118,6 +119,9 @@ class Configuration(_logging.Logging):
         parser.add_argument("--configfile", "-c",
             help="Use this file rather than the default.",
             )
+        parser.add_argument("--configdir", "-d",
+            help="Use this directory rather than the default.",
+            )
         parser.add_argument("--dry-run", "-n",
             help="Perform a trial run with no changes made.",
             action="store_true",
@@ -160,6 +164,14 @@ class Configuration(_logging.Logging):
             self._logger.debug(
                 "From env: BACKUP_CONFIGFILE = {}".format(
                     self.environ['BACKUP_CONFIGFILE']
+                    )
+                )
+        if 'BACKUP_CONFIGDIR' in self.environ:
+            self.config.defaults()['configdir'] = \
+                self.environ['BACKUP_CONFIGDIR']
+            self._logger.debug(
+                "From env: BACKUP_CONFIGDIR = {}".format(
+                    self.environ['BACKUP_CONFIGDIR']
                     )
                 )
 

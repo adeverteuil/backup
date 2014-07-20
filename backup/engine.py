@@ -72,7 +72,21 @@ class rsyncWrapper(_logging.Logging):
             args.append("--bwlimit={}".format(options['bwlimit']))
         if options.getboolean('dry-run'):
             args.append("--dry-run")
-        #TODO --exclude_from and --filter files
+        # Append --filter=merge filterfile
+        filterfile = os.path.join(
+            options['configdir'],
+            options._name + ".filter",  # The name of the config section.
+            )
+        if os.access(filterfile, os.F_OK):
+            args.append("--filter=merge {}".format(filterfile))
+        # Append --exclude-from=excludefile
+        excludefile = os.path.join(
+            options['configdir'],
+            options._name + ".exclude",  # The name of the config section.
+            )
+        if os.access(excludefile, os.F_OK):
+            args.append("--exclude_from={}".format(excludefile))
+        # Append source directories.
         sourcedirs = options['sourcedirs'].split(":")
         if 'sourcehost' in options:
             # Transform this:  ["dir1", "dir2", "dir3"]

@@ -35,6 +35,7 @@ class TestEngine(BasicSetup):
                 'sourcedirs': self.testsource,
                 'dest': self.testdest,
                 'dry-run': "False",
+                'configdir': self.configdir,
                 }
             )['DEFAULT']
 
@@ -110,6 +111,15 @@ class TestEngine(BasicSetup):
         r.close_pipes()
         self.assertEqual(os.listdir(self.testdest), [])
         self.assertEqual(r.process.returncode, 0)
+
+    def test_filterfile_and_excludefile(self):
+        excludefile = os.path.join(self.configdir, "DEFAULT.exclude")
+        filterfile = os.path.join(self.configdir, "DEFAULT.filter")
+        open(excludefile, "w").close()
+        open(filterfile, "w").close()
+        r = rsyncWrapper(self.minimal_options)
+        self.assertIn("--exclude_from={}".format(excludefile), r.args)
+        self.assertIn( "--filter=merge {}".format(filterfile), r.args)
 
 
 class TestPipeLogger(BasicSetup):

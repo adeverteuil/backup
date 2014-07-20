@@ -48,6 +48,7 @@ class BasicSetup(unittest.TestCase):
         # of it instead of testsource itself.
         self.testsource += "/"
         self.testdest = tempfile.mkdtemp(prefix="testdest_", dir=BASEDIR)
+        self.configdir = tempfile.mkdtemp(prefix="testconfigdir_", dir=BASEDIR)
         self.configfile = tempfile.mkstemp(
             prefix="testconfig_",
             dir=BASEDIR, text=True
@@ -74,7 +75,7 @@ class BasicSetup(unittest.TestCase):
             "sourcedirs=" + self.testsource + "\n"
             "dest=" + self.testdest + "\n"
             "excludefile=/dev/null\n"
-            "filterfile=/dev/null\n"
+            "filterfile=" + self.configdir + "\n"
             "[host_1_1]\n"
             "hourlies = 1\n"
             "dailies = 1\n"
@@ -93,6 +94,9 @@ class BasicSetup(unittest.TestCase):
 
         shutil.rmtree(self.testdest)
         self.testdest = None
+
+        shutil.rmtree(self.configdir)
+        self.configdir = None
 
         os.remove(self.configfile)
         self.configfile = None
