@@ -42,6 +42,8 @@ import os.path
 import sys
 import threading
 
+from .dry_run import if_not_dry_run
+
 
 class Error(Exception):
     """Base class for other exceptions."""
@@ -103,6 +105,7 @@ class Lockable:
                 )
             )
 
+    @if_not_dry_run
     def acquire(self):
         try:
             os.mkdir(self.lockfile)  # Atomic operation.
@@ -126,6 +129,11 @@ class Lockable:
                     "Lock created: {}.".format(self._unique_name)
                     )
 
+    @acquire.alternative
+    def acquire(self):
+        self._locked = True  # Locking is irrelevant if dry_run is True.
+
+    @if_not_dry_run
     def release(self):
         if not self.is_locked():
             raise AlreadyUnlocked("{} is not locked".format(self.path))
@@ -139,12 +147,30 @@ class Lockable:
                     "Lock released: {}.".format(self._unique_name)
                     )
 
+    @release.alternative
+    def release(self):
+        self._locked = False
+
+    @if_not_dry_run
     def is_locked(self):
         return os.access(self.lockfile, os.F_OK)
 
+    @is_locked.alternative
+    def is_locked(self):
+        try:
+            return self._locked
+        except AttributeError:
+            return False
+
+    @if_not_dry_run
     def i_am_locking(self):
         return self.is_locked() and os.access(self._unique_name, os.F_OK)
 
+    @i_am_locking.alternative
+    def i_am_locking(self):
+        return self.is_locked()
+
+    @if_not_dry_run
     def break_lock(self):
         if os.access(self.lockfile, os.F_OK):
             for name in os.listdir(self.lockfile):

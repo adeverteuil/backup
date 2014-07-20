@@ -35,7 +35,7 @@ class TestWriter:
         with open(path, "w") as f:
             f.write("Hello")
 
-    #@create_file_with_alt.alternative
+    @create_file_with_alt.alternative
     def create_file_with_alt(self, path):
         self.out = "Hello"
 

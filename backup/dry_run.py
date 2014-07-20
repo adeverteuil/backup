@@ -61,12 +61,12 @@ class if_not_dry_run:
 
     def __init__(self, func):  # On @ decorator.
         self.func = func
-        self.alternative = None
+        self.alt_func = None
 
     def __call__(self, *args, **kwargs):  # On call to original function.
         if self.dry_run:
-            if self.alternative is not None:
-                return self.alternative(*args, **kwargs)
+            if self.alt_func is not None:
+                return self.alt_func(*args, **kwargs)
             else:
                 return
         else:
@@ -74,6 +74,10 @@ class if_not_dry_run:
 
     def __get__(self, instance, owner):  # On method attribute fetch.
         return _wrapper(self, instance)
+
+    def alternative(self, func):  # On @wrapped_func.alternative
+        self.alt_func = func
+        return self
 
 
 class _wrapper:
@@ -85,7 +89,3 @@ class _wrapper:
     def __call__(self, *args, **kwargs):
         # Runs writes_to_filesystem.__call__
         return self.desc(self.subj, *args, **kwargs)
-
-    def alternative(self, func):  # On @wrapped_func.alternative
-        self.desc.alternative = func
-        return self.desc
