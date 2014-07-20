@@ -107,6 +107,7 @@ class rsyncWrapper(_logging.Logging):
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            universal_newlines=True,
             )
         self.loggers = {
             'stdout': PipeLogger(
