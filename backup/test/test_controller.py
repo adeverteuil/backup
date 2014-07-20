@@ -16,6 +16,7 @@
 
 
 import unittest
+import stat
 
 from .basic_setup import BasicSetup
 from ..controller import *
@@ -45,3 +46,24 @@ class TestController(BasicSetup):
             sorted(os.listdir(self.testsource)+["backup.log"]),
             sorted(os.listdir(os.path.join("host_1_0", dir))),
             )
+
+    def test_dry_run(self):
+        os.chdir(self.testdest)
+        os.mkdir("host_1_0")
+        # Make destination dir read-only and see if PermissionError is raised.
+        readonly = stat.S_IXUSR | stat.S_IRUSR
+        os.chmod(self.testdest, readonly)
+        os.chmod("host_1_0", readonly)
+        c = Controller(
+            Configuration(
+                argv=["-c", self.configfile, "--dry-run", "host_1_0"],
+                environ={},
+                ).configure()
+            )
+        c.run()
+        self.assertEqual(
+            os.listdir(os.path.join(self.testdest, "host_1_0")),
+            [],
+            )
+        # Reset write permission for tearDown().
+        os.chmod(self.testdest, readonly | stat.S_IWUSR)

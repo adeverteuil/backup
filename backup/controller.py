@@ -26,6 +26,7 @@ import traceback
 from . import _logging
 from .config import *
 from .cycle import Cycle
+from .dry_run import if_not_dry_run
 from .engine import rsyncWrapper
 
 
@@ -109,6 +110,7 @@ class Controller(_logging.Logging):
                     self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
 
+    @if_not_dry_run
     def _prepare_logfile(self, path):
         """Create a log file handler and add it to the root logger.
 
@@ -131,6 +133,7 @@ class Controller(_logging.Logging):
         self._logger.debug("Log file {} created.".format(path))
 
 
+    @if_not_dry_run
     def _move_logfile(self, path):
         """Move the log file to the snapshot directory.
 

@@ -28,6 +28,7 @@ import os.path
 import stat
 
 from . import _logging
+from .dry_run import if_not_dry_run
 from .locking import Lockable
 from .snapshot import *
 
@@ -55,6 +56,7 @@ class Cycle(Lockable, _logging.Logging):
             self._logger.debug("Inserting {}.".format(dir))
             self.snapshots.insert(0, Snapshot.from_path(dir))
 
+    @if_not_dry_run
     def _cp_la(self, src, dst):
         """Emulate cp -la.
 
