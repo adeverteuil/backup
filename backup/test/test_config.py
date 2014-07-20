@@ -20,6 +20,7 @@ import unittest.mock
 
 from .basic_setup import BasicSetup
 from ..config import *
+from ..dry_run import if_dry_run_False
 
 
 class TestConfiguration(BasicSetup):
@@ -92,8 +93,8 @@ class TestConfiguration(BasicSetup):
     def test_merge_args_with_config(self):
         c = Configuration(argv=["--dry-run"])
         c._parse_args()
-        c.args.configfile = self.configfile
-        c._read_config()
-        self.assertEqual(c.config.getboolean('default', 'dry-run'), False)
-        c._merge_args_with_config()
-        self.assertEqual(c.config.getboolean('default', 'dry-run'), True)
+        self.assertTrue(if_dry_run_False.dry_run)
+        if_dry_run_False.dry_run = False
+        c = Configuration(argv=[])
+        c._parse_args()
+        self.assertFalse(if_dry_run_False.dry_run)

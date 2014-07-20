@@ -28,6 +28,8 @@ import shutil
 import tempfile
 import unittest
 
+from ..dry_run import if_dry_run_False
+
 
 # This is where temporary test files and directories will live for a
 # brief moment.
@@ -94,3 +96,5 @@ class BasicSetup(unittest.TestCase):
 
         os.remove(self.configfile)
         self.configfile = None
+
+        if_dry_run_False.dry_run = False
