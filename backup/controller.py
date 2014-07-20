@@ -68,10 +68,10 @@ class Controller(_logging.Logging):
 
     def _run(self):
         config = self.config
-        # Save all the logging done so far. There will be a FileHandler
-        # created for each host. All of them will have the content of
-        # log_header written to them.
-        self.log_header = _logging.handlers['memory'].stream.getvalue()
+        # Stop buffering log records. There will be a FileHandler created for
+        # each host. All of them will have the content of the memory handler
+        # flushed to them.
+        logging.getLogger().removeHandler(_logging.handlers['memory'])
         for host in config.defaults()['hosts'].split(" "):
             thisconfig = config[host]
             dest = os.path.join(thisconfig['dest'], host)
@@ -114,20 +114,17 @@ class Controller(_logging.Logging):
     def _prepare_logfile(self, path):
         """Create a log file handler and add it to the root logger.
 
-        All the logging done so far was memorized. Just after the handler is
-        created and before any further logging, we write this log header in
-        the log file.
+        All the logging done so far was buffered. Just after the handler is
+        created and before any further logging, we flush (actually, copy) the
+        buffered records to the file handler.
         """
         logfile = os.path.join(path, "backup.log")
         handler = logging.FileHandler(logfile)
         handler.logfile = logfile  # For use in _move_logfile method.
         handler.setFormatter(_logging.formatters['file'])
         handler.setLevel(logging.DEBUG)
-        handler.acquire()
-        try:
-            handler.stream.write(self.log_header)
-        finally:
-            handler.release()
+        _logging.handlers['memory'].setTarget(handler)
+        _logging.handlers['memory'].flush()
         logging.getLogger().addHandler(handler)
         _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(path))

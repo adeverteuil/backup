@@ -40,8 +40,32 @@ There are also the following module level functions:
 
 import io
 import logging
+import logging.handlers
 import shutil
 import sys
+
+
+class ManualFlushMemoryHandler(logging.handlers.MemoryHandler):
+
+    """Buffer records in memory, flush them to a target handler.
+
+    Contrary to its base MemoryHandler class, flushing does not occur
+    automatically. When the flush method is called by the program, it
+    does not empty the buffer.
+    """
+
+    def shouldFlush(self, record):
+        return False
+
+    def flush(self):
+        self.acquire()
+        try:
+            if self.target:
+                for record in self.buffer:
+                    self.target.handle(record)
+                # Don't empty the buffer.
+        finally:
+            self.release()
 
 
 formatters = {
@@ -58,7 +82,7 @@ handlers = {
     # A FileHandler will be created by the engine.Controller class. However,
     # it's file location is only known a runtime. This handler will hold
     # log record that will be written to the file when it is created.
-    'memory': logging.StreamHandler(stream=io.StringIO()),
+    'memory': ManualFlushMemoryHandler(0),
     }
 handlers['stream'].setFormatter(formatters['stream'])
 handlers['stream'].setLevel(logging.WARNING)
