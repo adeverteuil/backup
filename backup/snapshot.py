@@ -298,7 +298,9 @@ class Snapshot(_logging.Logging, Lockable):
     def mkdir(self):
         """Create the snapshot directory on the filesystem."""
         if self.status != VOID:
-            msg = "status is {}, must be VOID.".format(self.status)
+            msg = "status is {}, must be VOID.".format(
+                _status_lookup[self.status],
+                )
             raise RuntimeError(msg)
         self._mkdir(self.path)
         self._logger.debug("Created directory {}.".format(self.path))
