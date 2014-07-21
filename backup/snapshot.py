@@ -109,6 +109,8 @@ class Snapshot(_logging.Logging, Lockable):
 
     _timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
 
+    wip_suffix = "wip"
+
     @staticmethod
     def from_path(path):
         """Create a snapshot object from a path name.
@@ -118,7 +120,7 @@ class Snapshot(_logging.Logging, Lockable):
         """
         dir = os.path.dirname(path)
         interval, stimestamp = os.path.basename(path).split(".")
-        if stimestamp == "wip":
+        if stimestamp == Snapshot.wip_suffix:
             stimestamp = None
         return Snapshot(dir, interval, timestamp=stimestamp)
 
@@ -128,7 +130,7 @@ class Snapshot(_logging.Logging, Lockable):
         dirs = glob.glob("{}/{}.*".format(dir, interval))
         dirs.sort(reverse=True)
         dirs[index]  # raises IndexError.
-        if dirs[index].endswith(".wip"):
+        if dirs[index].endswith("."+Snapshot.wip_suffix):
             timestamp = None
         else:
             timestamp = datetime.datetime.strptime(
@@ -212,7 +214,7 @@ class Snapshot(_logging.Logging, Lockable):
     def stimestamp(self):
         """The timestamp as a ISO 8601 string."""
         if self.timestamp is None:
-            return "wip"
+            return self.wip_suffix
         else:
             return self.timestamp.strftime(self._timeformat)
 
