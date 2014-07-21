@@ -39,9 +39,6 @@ class Cycle(Lockable, _logging.Logging):
     """Manages a group of Snapshots of the same interval."""
 
     def __init__(self, dir, interval, **kwargs):
-        #TODO if interval is "daily", check if the las snapshot is >1 day ago.
-        # Hourly backups will be regulated by the systemd .timer unit or
-        # cron job.
         super().__init__(**kwargs)
         self.dir = dir
         self.interval = interval
