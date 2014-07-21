@@ -52,10 +52,10 @@ class TestCycle(BasicSetup):
     def test_resume_create_new_snapshot(self):
         # Simulate an aborted sync.
         os.chdir(self.testdest)
-        os.mkdir("hourly.0")
-        with open(".hourly.0.status", "w") as f:
+        os.mkdir("hourly.wip")
+        with open(".hourly.wip.status", "w") as f:
             f.write(str(SYNCING))
-        inode = os.stat("hourly.0").st_ino
+        inode = os.stat("hourly.wip").st_ino
         # Setup as usual.
         cycle = Cycle(self.testdest, "hourly")
         config= Configuration(
@@ -165,11 +165,12 @@ class TestCycle(BasicSetup):
         with open(".hourly.2014-07-03T00:00.status", "w") as f:
             f.write(str(DELETING))
         c = Cycle(self.testdest, "hourly")
-        c.purge(1)
+        c.purge(2)
         self.assertEqual(
             sorted(os.listdir(self.testdest)),
             [
                 ".hourly.2014-07-03T00:00.status",
+                "hourly.2014-07-02T00:00",
                 "hourly.2014-07-03T00:00",
                 "hourly.2014-07-04T00:00",
                 ],

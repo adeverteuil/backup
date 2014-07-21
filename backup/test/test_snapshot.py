@@ -35,7 +35,7 @@ class TestSnapshot(BasicSetup):
         self.assertIsNone(s.timestamp)
         self.assertTrue(s.path.startswith(self.testdest))
         self.assertEqual(s.interval, "interval")
-        self.assertTrue(s.path.endswith(".0"), msg=s.path)
+        self.assertTrue(s.path.endswith(".wip"), msg=s.path)
 
     def test_set_timestamp(self):
         t = datetime.datetime(2014, 7, 1, 10, 10)
@@ -51,7 +51,7 @@ class TestSnapshot(BasicSetup):
             s.status = SYNCING
             self.assertEqual(
                 sorted(os.listdir(self.testdest)),
-                [".interval.0.lock", ".interval.0.status", "interval.0"]
+                [".interval.wip.lock", ".interval.wip.status", "interval.wip"]
                 )
             s.timestamp = t
             self.assertEqual(
@@ -72,21 +72,21 @@ class TestSnapshot(BasicSetup):
         os.mkdir("some_random_directory")
         for d in range(4):
             s = Snapshot.from_index(self.testdest, "daily", d)
-            self.assertEqual(s.timestamp, datetime.datetime(2014, 7, d+1))
+            self.assertEqual(s.timestamp, datetime.datetime(2014, 7, 4-d))
         with self.assertRaises(IndexError):
             s = Snapshot.from_index(self.testdest, "daily", 4)
         s = Snapshot.from_index(self.testdest, "daily", -1)
-        self.assertEqual(s.timestamp, datetime.datetime(2014, 7, 4))
+        self.assertEqual(s.timestamp, datetime.datetime(2014, 7, 1))
 
     def test_snapshot_from_path(self):
         os.chdir(self.testdest)
         os.mkdir("daily.2014-07-01T00:00")
-        os.mkdir("daily.0")
-        s = Snapshot.from_path(os.path.join(self.testdest, "daily.0"))
+        os.mkdir("daily.wip")
+        s = Snapshot.from_path(os.path.join(self.testdest, "daily.wip"))
         self.assertIsNone(s.timestamp)
         self.assertEqual(
             s.path,
-            os.path.join(self.testdest, "daily.0")
+            os.path.join(self.testdest, "daily.wip")
             )
         s = Snapshot.from_path(
             os.path.join(self.testdest, "daily.2014-07-01T00:00")
@@ -181,14 +181,14 @@ class TestSnapshot(BasicSetup):
         #   2014-07-03 -- COMPLETE
         #   2014-07-04 -- DELETING
         os.chdir(self.testdest)
-        os.mkdir("daily.2014-07-01T00:00")
-        os.mkdir("daily.2014-07-02T00:00")
-        with open(".daily.2014-07-02T00:00.status", "w") as f:
-            f.write(str(SYNCING))
-        os.mkdir("daily.2014-07-03T00:00")
-        open("daily.2014-07-03T00:00/a", "wb").close()
         os.mkdir("daily.2014-07-04T00:00")
-        with open(".daily.2014-07-04T00:00.status", "w") as f:
+        os.mkdir("daily.2014-07-03T00:00")
+        with open(".daily.2014-07-03T00:00.status", "w") as f:
+            f.write(str(SYNCING))
+        os.mkdir("daily.2014-07-02T00:00")
+        open("daily.2014-07-02T00:00/a", "wb").close()
+        os.mkdir("daily.2014-07-01T00:00")
+        with open(".daily.2014-07-01T00:00.status", "w") as f:
             f.write(str(DELETING))
 
         snapshots = []

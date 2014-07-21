@@ -118,7 +118,7 @@ class Snapshot(_logging.Logging, Lockable):
         """
         dir = os.path.dirname(path)
         interval, stimestamp = os.path.basename(path).split(".")
-        if stimestamp == "0":
+        if stimestamp == "wip":
             stimestamp = None
         return Snapshot(dir, interval, timestamp=stimestamp)
 
@@ -126,9 +126,9 @@ class Snapshot(_logging.Logging, Lockable):
     def from_index(dir, interval, index):
         # Try to find timestamp by index in existing directories.
         dirs = glob.glob("{}/{}.*".format(dir, interval))
-        dirs.sort()
+        dirs.sort(reverse=True)
         dirs[index]  # raises IndexError.
-        if dirs[index].endswith(".0"):
+        if dirs[index].endswith(".wip"):
             timestamp = None
         else:
             timestamp = datetime.datetime.strptime(
@@ -212,7 +212,7 @@ class Snapshot(_logging.Logging, Lockable):
     def stimestamp(self):
         """The timestamp as a ISO 8601 string."""
         if self.timestamp is None:
-            return "0"
+            return "wip"
         else:
             return self.timestamp.strftime(self._timeformat)
 
