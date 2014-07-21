@@ -1,0 +1,7 @@
+[Unit]
+Description=Make backups
+EnvironmentFile=-/tmp/agent-info
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/backup

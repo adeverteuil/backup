@@ -1,0 +1,5 @@
+[Unit]
+Description=Timer unit for backup service.
+
+[Timer]
+OnCalendar=hourly
