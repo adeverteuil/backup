@@ -85,7 +85,7 @@ class rsyncWrapper(_logging.Logging):
             options._name + ".exclude",  # The name of the config section.
             )
         if os.access(excludefile, os.F_OK):
-            args.append("--exclude_from={}".format(excludefile))
+            args.append("--exclude-from={}".format(excludefile))
         # Append source directories.
         sourcedirs = options['sourcedirs'].split(":")
         if 'sourcehost' in options:

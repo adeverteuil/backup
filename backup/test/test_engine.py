@@ -118,7 +118,7 @@ class TestEngine(BasicSetup):
         open(excludefile, "w").close()
         open(filterfile, "w").close()
         r = rsyncWrapper(self.minimal_options)
-        self.assertIn("--exclude_from={}".format(excludefile), r.args)
+        self.assertIn("--exclude-from={}".format(excludefile), r.args)
         self.assertIn( "--filter=merge {}".format(filterfile), r.args)
 
 
