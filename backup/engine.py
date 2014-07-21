@@ -141,7 +141,7 @@ class rsyncWrapper(_logging.Logging):
     def wait(self, timeout=None):
         """Wait on the subprocess and both logger threads."""
         start = time.perf_counter()
-        self.process.wait(timeout=timeout)
+        returncode = self.process.wait(timeout=timeout)
         for logger in self.loggers.values():
             timeleft = time.perf_counter() - start
             start = time.perf_counter()
@@ -150,6 +150,7 @@ class rsyncWrapper(_logging.Logging):
             logger.join(timeout=timeout)
             if logger.is_alive():
                 raise subprocess.TimeoutExpired
+        return returncode
 
     def close_pipes(self):
         """Close the stdout and stderr streams of the subprocess."""

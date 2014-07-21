@@ -26,6 +26,7 @@ import datetime
 import logging
 import os.path
 import stat
+import subprocess
 
 from . import _logging
 from .dry_run import if_not_dry_run
@@ -144,7 +145,11 @@ class Cycle(Lockable, _logging.Logging):
                 else:
                     linkdestpath = None
                 engine.sync_to(snapshot.path, linkdestpath)
-                engine.wait()
+                returncode = engine.wait()
+                if returncode > 0:
+                    raise RuntimeError(
+                        "Engine returned {}.".format(returncode)
+                        )
             except KeyboardInterrupt:
                 engine.interrupt_event.set()
                 raise
