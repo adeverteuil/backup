@@ -67,6 +67,12 @@ class ManualFlushMemoryHandler(logging.handlers.MemoryHandler):
         finally:
             self.release()
 
+    def close(self):
+        # Overridden because the superclass automaticly flushes the buffer
+        # before closing.
+        self.buffer = []
+        super().close()
+
 
 formatters = {
     'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
