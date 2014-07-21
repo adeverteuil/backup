@@ -127,7 +127,7 @@ class Controller(_logging.Logging):
         _logging.handlers['memory'].flush()
         logging.getLogger().addHandler(handler)
         _logging.handlers['file'] = handler
-        self._logger.debug("Log file {} created.".format(path))
+        self._logger.debug("Log file {} created.".format(logfile))
 
 
     @if_not_dry_run
