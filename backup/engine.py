@@ -89,6 +89,7 @@ class rsyncWrapper(_logging.Logging):
         # Append source directories.
         sourcedirs = options['sourcedirs'].split(":")
         if 'sourcehost' in options:
+            args.append("--rsh=ssh -o BatchMode=yes")
             # Transform this:  ["dir1", "dir2", "dir3"]
             # into this: ["sourcehost:dir1", ":dir2", ":dir3"]
             sourcedirs = [":"+dir for dir in sourcedirs]

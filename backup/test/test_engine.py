@@ -88,7 +88,11 @@ class TestEngine(BasicSetup):
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
         self.minimal_options.update(options)
         expected = expected[0:7]
-        expected += ["--bwlimit=30", "root@machine:"+self.testsource]
+        expected += [
+            "--bwlimit=30",
+            "--rsh=ssh -o BatchMode=yes",
+            "root@machine:"+self.testsource,
+            ]
         r = rsyncWrapper(self.minimal_options)
         self.assertEqual(r.args, expected)
 
