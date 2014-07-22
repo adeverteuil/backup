@@ -48,7 +48,7 @@ RSYNC_E_CODES = {
     20 : FatalException("Received SIGUSR1 or SIGINT"),
     21 : FatalException("Some rsyncWarning returned by waitpid()"),
     22 : FatalException("Error allocating core memory buffers"),
-    23 : FatalException("Partial transfer due to rsyncWarning"),
+    23 : FatalException("Partial transfer due to error"),
     24 : rsyncWarning("Partial transfer due to vanished source files"),
     25 : rsyncWarning("The --max-delete limit stopped deletions"),
     30 : FatalException("Timeout in data send/receive"),
