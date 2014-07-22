@@ -59,7 +59,7 @@ class Controller(_logging.Logging):
         for host in hosts:
             try:
                 self._run_host(host)
-            except:
+            except Exception:
                 errors = 1
                 self._log_exception(*sys.exc_info())
                 # In a normal situation, _move_log_file() is called and this
@@ -67,6 +67,10 @@ class Controller(_logging.Logging):
                 # exception occurs during a backup, we want to close the file
                 # handler before we move on to another host.
                 self._close_file_logger()
+            except KeyboardInterrupt:
+                errors = 1
+                self._logger.error("Keyboard interrupt.")
+                break
         if errors:
             self._logger.error("Exiting with errors.")
         else:
