@@ -216,5 +216,10 @@ class Configuration(_logging.Logging):
         # --configfile has already been parsed in _read_config().
         if self.args.hosts:
             self.config.defaults()['hosts'] = " ".join(self.args.hosts)
+        elif 'hosts' not in self.config.defaults():
+            # If the hosts key in the default section is not defined and no
+            # hosts were specified on the command line, build the hosts list
+            # from the sections of the configuration file.
+            self.config.defaults()['hosts'] = " ".join(self.config.sections())
         self.config.defaults()['dry-run'] = str(self.args.dry_run)
         if_not_dry_run.dry_run = self.args.dry_run

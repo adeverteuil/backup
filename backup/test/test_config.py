@@ -99,8 +99,9 @@ class TestConfiguration(BasicSetup):
         self.assertEqual(c.config.defaults()['hosts'], "spamhost")
         if_not_dry_run.dry_run = False
         c = Configuration(argv=[])
+        c.config.add_section("eggs")
+        c.config.add_section("penguin")
         c._parse_args()
         c._merge_args_with_config()
         self.assertFalse(if_not_dry_run.dry_run)
-        with self.assertRaises(KeyError):
-            c.config.defaults()['hosts']
+        self.assertEqual(c.config.defaults()['hosts'], "eggs penguin")
