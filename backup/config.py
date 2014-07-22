@@ -126,6 +126,16 @@ class Configuration(_logging.Logging):
             help="Perform a trial run with no changes made.",
             action="store_true",
             )
+        parser.add_argument("-e",
+            metavar="EXECUTABLE",
+            help=argparse.SUPPRESS,
+            const="echo",
+            nargs="?",
+            #help=("Executable to use instead of rsync. "
+            #      "Use echo when debugging. "
+            #      "echo is the default if this option is used but no "
+            #      "executable is specified."),
+            )
         parser.add_argument("hosts",
             nargs="*",
             help=("List of hosts to do a backup of. Hosts are defined through "
@@ -223,3 +233,5 @@ class Configuration(_logging.Logging):
             self.config.defaults()['hosts'] = " ".join(self.config.sections())
         self.config.defaults()['dry-run'] = str(self.args.dry_run)
         if_not_dry_run.dry_run = self.args.dry_run
+        if self.args.e is not None:
+            self.config.defaults()['rsync'] = self.args.e
