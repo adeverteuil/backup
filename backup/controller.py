@@ -44,7 +44,6 @@ class Controller(_logging.Logging):
         self.config = config
 
     def run(self):
-        config = self.config
         try:
             self._sanity_checks()
         except:
@@ -54,8 +53,10 @@ class Controller(_logging.Logging):
         # each host. All of them will have the content of the memory handler
         # flushed to them.
         logging.getLogger().removeHandler(_logging.handlers['memory'])
+        hosts = self.config.defaults()['hosts'].split(" ")
+        self._logger.info("Hosts to back up: {}".format(", ".join(hosts)))
         errors = 0
-        for host in config.defaults()['hosts'].split(" "):
+        for host in hosts:
             try:
                 self._run_host(host)
             except:
@@ -189,7 +190,6 @@ class Controller(_logging.Logging):
                     )
                 )
         for host in config.defaults()['hosts'].split(" "):
-            self._logger.info("Backing up host {}.".format(host))
             if host not in config.sections():
                 raise ValueError(
                     "{} not defined in {}.".format(
