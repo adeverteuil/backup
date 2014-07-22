@@ -44,69 +44,84 @@ class Controller(_logging.Logging):
         self.config = config
 
     def run(self):
-        errors = 0
+        config = self.config
         try:
             self._sanity_checks()
-            self._run()
         except:
-            errtype, errval, tb = sys.exc_info()
-            self._logger.error(
-                "{}{}".format(
-                    errtype.__name__,
-                    errval.args,
-                    )
-                )
-            self._logger.debug(
-                "".join(["Traceback:\n"] + traceback.format_tb(tb))
-                )
-            errors = 1
-        if errors:
-            self._logger.info("Exiting with errors.")
-        else:
-            self._logger.info("Exiting normally.")
-        return errors
-
-    def _run(self):
-        config = self.config
+            self._log_exception(*sys.exc_info())
+            return 1
         # Stop buffering log records. There will be a FileHandler created for
         # each host. All of them will have the content of the memory handler
         # flushed to them.
         logging.getLogger().removeHandler(_logging.handlers['memory'])
+        errors = 0
         for host in config.defaults()['hosts'].split(" "):
-            thisconfig = config[host]
-            dest = os.path.join(thisconfig['dest'], host)
-            hourlies = int(thisconfig['hourlies'])
-            dailies = int(thisconfig['dailies'])
-            self._prepare_logfile(dest)
-            self._logger.info("Processing {}.".format(host))
-            if hourlies > 0:
-                self._logger.info("Starting hourly cycle")
-                cycle = Cycle(dest, "hourly")
-                rsync = rsyncWrapper(thisconfig)
-                cycle.create_new_snapshot(rsync)
-                cycle.purge(hourlies)
-                self._move_logfile(cycle.snapshots[0].path)
-            if dailies > 0:
-                self._logger.info("Starting daily cycle")
-                cycle = Cycle(dest, "daily")
-                a_day = datetime.timedelta(days=1)
-                now = datetime.datetime.now()
-                if (len(cycle.snapshots) > 0 and
-                    cycle.snapshots[0].timestamp + a_day >= now):
-                    self._logger.debug(
-                        "Most recent daily snapshot is less than one day ago. "
-                        "Not doing a daily backup."
-                        )
-                    break
+            try:
+                self._run_host(host)
+            except:
+                errors = 1
+                self._log_exception(*sys.exc_info())
+                # In a normal situation, _move_log_file() is called and this
+                # method in turn calls _close_file_logger(). However, if an
+                # exception occurs during a backup, we want to close the file
+                # handler before we move on to another host.
+                self._close_file_logger()
+        if errors:
+            self._logger.error("Exiting with errors.")
+        else:
+            self._logger.info("Exiting normally.")
+        return errors  # 0 or 1.
+
+    def _log_exception(self, errtype, errval, tb):
+        self._logger.error(
+            "{}{}".format(
+                errtype.__name__,
+                errval.args,
+                )
+            )
+        self._logger.debug(
+            "".join(["Traceback:\n"] + traceback.format_tb(tb))
+            )
+
+    def _run_host(self, host):
+        thisconfig = self.config[host]
+        dest = os.path.join(thisconfig['dest'], host)
+        hourlies = int(thisconfig['hourlies'])
+        dailies = int(thisconfig['dailies'])
+        self._prepare_logfile(dest)
+        self._logger.info("Processing {}.".format(host))
+        if hourlies > 0:
+            self._logger.info("Starting hourly backup")
+            cycle = Cycle(dest, "hourly")
+            rsync = rsyncWrapper(thisconfig)
+            cycle.create_new_snapshot(rsync)
+            cycle.purge(hourlies)
+            self._logger.info("Finished hourly backup")
+            self._move_logfile(cycle.snapshots[0].path)
+        if dailies > 0:
+            cycle = Cycle(dest, "daily")
+            a_day = datetime.timedelta(days=1)
+            now = datetime.datetime.now()
+            if (len(cycle.snapshots) > 0 and
+                cycle.snapshots[0].timestamp + a_day >= now):
+                self._logger.debug(
+                    "Most recent daily snapshot is less than one day ago. "
+                    "Not doing a daily backup."
+                    )
+            else:
                 if hourlies > 0:
                     # dailies > 0 and hourlies > 0
                     # Create dailies by archiving hourlies.
+                    self._logger.info("Starting daily archive")
                     cycle.archive_from(Cycle(dest, "hourly"))
+                    self._logger.info("Finished daily archive")
                 else:
                     # dailies > 0 but hourlies <= 0
                     # Create dailies with rsync.
+                    self._logger.info("Starting daily backup")
                     rsync = rsyncWrapper(thisconfig)
                     cycle.create_new_snapshot(rsync)
+                    self._logger.info("Finished daily backup")
                     self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
 
@@ -140,14 +155,20 @@ class Controller(_logging.Logging):
         """
         self._logger.debug("Moving log file to {}.".format(path))
         handler = _logging.handlers['file']
+        self._close_file_logger()
+        os.rename(
+            handler.logfile,  # Set by me in _prepare_logfile.
+            os.path.join(path, "backup.log"),
+            )
+
+    @if_not_dry_run
+    def _close_file_logger(self):
+        self._logger.debug("Closing log file.")
+        handler = _logging.handlers['file']
         logging.getLogger().removeHandler(handler)
         handler.acquire()
         try:
             handler.close()
-            os.rename(
-                handler.logfile,  # Set by me in _prepare_logfile.
-                os.path.join(path, "backup.log"),
-                )
         finally:
             handler.release()
         del _logging.handlers['file']

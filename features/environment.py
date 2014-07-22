@@ -46,10 +46,12 @@ def before_scenario(context, scenario):
             "[test_host]\n"
             "hourlies = 2\n"
             "dailies = 2\n"
+            "[test_host_2]\n"
              )
     context.configfile = configfile
     os.environ['BACKUP_CONFIGFILE'] = configfile
     os.mkdir(os.path.join(context.testdest, "test_host"))
+    os.mkdir(os.path.join(context.testdest, "test_host_2"))
 
 def after_scenario(context, scenario):
     if "notempfile" in scenario.tags:

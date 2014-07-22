@@ -25,3 +25,9 @@ Feature: Backup a directory to another directory
         And I invoke backup without parameters
         Then the program should exit 0
         And the test_host directory should contain 2 daily snapshots
+
+    Scenario: Multiple hosts to back up.
+        When I invoke backup with the arguments "test_host test_host_2"
+        Then the program should exit 0
+        And the test_host directory should contain 1 hourly snapshots
+        And the test_host_2 directory should contain 1 hourly snapshots
