@@ -63,7 +63,7 @@ class Cycle(Lockable, _logging.Logging):
         """
         src = os.path.normpath(src)
         dst = os.path.normpath(dst)
-        self._logger.info("Copying {} to {}.".format(src, dst))
+        self._logger.info("Hard-linking {} to {}.".format(src, dst))
         for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
             dirpath_dst = os.path.join(dst, os.path.relpath(dirpath, src))
             for dir in dirnames:
