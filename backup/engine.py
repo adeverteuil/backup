@@ -66,7 +66,7 @@ class rsyncWrapper(_logging.Logging):
             "--one-file-system",
             "--partial-dir=.rsync-partial",
             "--verbose",
-            "--out-format=%l %f",
+            "--out-format=#%l#%f",  # Format: "#" + file_size + "#" + file_name
             ]
         if 'bwlimit' in options:
             args.append("--bwlimit={}".format(options['bwlimit']))
@@ -192,7 +192,24 @@ class PipeLogger(threading.Thread):
         """Log lines from stream using method until empty read."""
         while not self.interrupt_event.is_set():
             line = self.stream.readline()
-            if line:
-                self.method(line.strip())
-            else:
+            if line == "":
                 return
+            elif line.startswith("#"):
+                # Extract the file size.
+                # Because of the --out-format option passed to rsync.
+                # Format is: "#" + file_size + "#" + file_name
+                size, line = line[1:].split("#", 1)
+                size = int(size)  # in bytes
+            self.method(line.strip())
+
+    def count_bytes(self, line):
+        """Count bytes transferred and build list of biggest files transferred.
+
+        Parameters:
+        line -- one line of the stdout stream of the rsync process.
+        """
+        # Extract the file size.
+        # Because of the --out-format option passed to rsync.
+        # Format is: "#" + file_size + "#" + file_name
+        size, line = line[1:].split("#", 1)
+        size = int(size)  # in bytes

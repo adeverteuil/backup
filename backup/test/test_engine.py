@@ -65,7 +65,7 @@ class TestEngine(BasicSetup):
                 "--one-file-system",
                 "--partial-dir=.rsync-partial",
                 "--verbose",
-                "--out-format=%l %f",
+                "--out-format=#%l#%f",
                 self.testsource,
                 self.testdest,
                 ]
@@ -80,7 +80,7 @@ class TestEngine(BasicSetup):
             "--one-file-system",
             "--partial-dir=.rsync-partial",
             "--verbose",
-            "--out-format=%l %f",
+            "--out-format=#%l#%f",
             self.testsource,
             ]
         self.assertEqual(r.args, expected)
