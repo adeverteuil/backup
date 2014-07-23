@@ -106,17 +106,22 @@ class Cycle(Lockable, _logging.Logging):
         Parameters:
             maxnumber -- An int, the number of snapshots to keep.
         """
-        # We want to keep maxnumber of complete bakups. Therefore, for each
-        # snapshot that are "dirty", we increment maxnumber by 1.
+        # Iterate over the snapshots list until we count maxnumber complete
+        # backups. Delete snapshots beyond that index.
+        complete_count = 0
+        cutoff_index = 0
         for snapshot in self.snapshots:
-            if snapshot.status != COMPLETE:
-                maxnumber += 1
-        for snapshot in self.snapshots[maxnumber:]:
+            if snapshot.status == COMPLETE:
+                complete_count += 1
+            cutoff_index += 1
+            if complete_count >= maxnumber:
+                break
+        for snapshot in self.snapshots[cutoff_index:]:
             with snapshot:
                 snapshot.status = DELETING
                 snapshot.delete()
                 snapshot.status = DELETED
-                self.snapshots.remove(snapshot)
+        del self.snapshots[cutoff_index:]
 
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""

@@ -156,6 +156,25 @@ class TestCycle(BasicSetup):
             ["hourly.2014-07-04T00:00"],
             )
 
+    def test_purge_nothing(self):
+        c = Cycle(self.testdest, "hourly")
+        c.purge(10)
+        self.assertEqual(os.listdir(self.testdest), [])
+        self.assertEqual(len(c.snapshots), 0)
+
+    def test_purge_but_keep_all(self):
+        os.chdir(self.testdest)
+        for d in range(1, 5):
+            os.mkdir("hourly.2014-07-{:02}T00:00".format(d))
+            open("hourly.2014-07-{:02}T00:00/file".format(d), "w").close()
+        c = Cycle(self.testdest, "hourly")
+        self.assertEqual(len(c.snapshots), 4)
+        c.purge(4)
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            ["hourly.2014-07-{:02}T00:00".format(d) for d in range(1, 5)],
+            )
+
     def test_purge_with_incomplete_snapshots(self):
         os.chdir(self.testdest)
         for d in range(1, 5):
@@ -163,6 +182,9 @@ class TestCycle(BasicSetup):
             open("hourly.2014-07-{:02}T00:00/file".format(d), "w").close()
         # Mark 1 snapshot dirty.
         with open(".hourly.2014-07-03T00:00.status", "w") as f:
+            f.write(str(DELETING))
+        # Mark the most ancient snapshot dirty. It should be purged.
+        with open(".hourly.2014-07-01T00:00.status", "w") as f:
             f.write(str(DELETING))
         c = Cycle(self.testdest, "hourly")
         c.purge(2)
@@ -175,3 +197,4 @@ class TestCycle(BasicSetup):
                 "hourly.2014-07-04T00:00",
                 ],
             )
+        self.assertEqual(len(c.snapshots), 3)
