@@ -28,7 +28,7 @@ This module provides the following classes:
 
 #TODO for adding trigger support.
 # [X] Test the wait method with timeout argument.
-# [ ] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
+# [X] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
 # [ ] Create the FLAGGED status.
 # [ ] Create the --force command line argument.
 # [ ] Add the configuration keys bw_warn and bw_err.
@@ -176,7 +176,8 @@ class PipeLogger(threading.Thread):
 
     """Logs lines of text read from a stream."""
 
-    def __init__(self, stream, method, interrupt_event, **kwargs):
+    def __init__(self, stream, method, interrupt_event,
+                 bw_warn=0, bw_err=0, **kwargs):
         """PipeLogger constructor.
 
         Takes two positional arguments:
@@ -198,6 +199,8 @@ class PipeLogger(threading.Thread):
         self.stream = stream
         self.method = method
         self.interrupt_event = interrupt_event
+        self.bw_warn = bw_warn
+        self.bw_err = bw_err
         self.biggest_files = []
         self.bytes_count = 0
         super().__init__(**kwargs)
