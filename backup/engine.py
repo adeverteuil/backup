@@ -27,15 +27,15 @@ This module provides the following classes:
 
 
 #TODO for adding trigger support.
-# [] Test the wait method with timeout argument.
-# [] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
-# [] Create the FLAGGED status.
-# [] Create the --force command line argument.
-# [] Add the configuration keys bw_warn and bw_err.
-# [] Make the Cycle instances loop between wait(timeout) and checking for
-#        exception raised in PipeLogger thread.
-# [] Write the warning and error methods in the PipeLogger class.
-# [] Make PipeLogger build a biggest files list and bytes transferred tally.
+# [X] Test the wait method with timeout argument.
+# [ ] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
+# [ ] Create the FLAGGED status.
+# [ ] Create the --force command line argument.
+# [ ] Add the configuration keys bw_warn and bw_err.
+# [ ] Make the Cycle instances loop between wait(timeout) and checking for
+#         exception raised in PipeLogger thread.
+# [ ] Write the warning and error methods in the PipeLogger class.
+# [ ] Make PipeLogger build a biggest files list and bytes transferred tally.
 
 
 import logging
@@ -154,15 +154,15 @@ class rsyncWrapper(_logging.Logging):
     def wait(self, timeout=None):
         """Wait on the subprocess and both logger threads."""
         start = time.perf_counter()
-        returncode = self.process.wait(timeout=timeout)
+        returncode = self.process.wait(timeout=timeout) # Raises TimeoutExpired
         for logger in self.loggers.values():
             timeleft = time.perf_counter() - start
             start = time.perf_counter()
             if timeout is not None:
                 timeout = timeleft
-            logger.join(timeout=timeout)
+            logger.join(timeout=timeout)  # Always returns None
             if logger.is_alive():
-                raise subprocess.TimeoutExpired
+                raise subprocess.TimeoutExpired(logger, timeout)
         return returncode
 
     def close_pipes(self):

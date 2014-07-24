@@ -125,6 +125,36 @@ class TestEngine(BasicSetup):
         self.assertIn("--exclude-from={}".format(excludefile), r.args)
         self.assertIn( "--filter=merge {}".format(filterfile), r.args)
 
+    @unittest.mock.patch("subprocess.Popen")
+    @unittest.mock.patch("backup.engine.PipeLogger")
+    def test_wait(self, mockpl, mockpopen):
+        # Configure mocks.
+        mockpopen().wait.side_effect = subprocess.TimeoutExpired("cmd", 1)
+        mockpl().join.return_value = None
+        mockpl().is_alive.return_value = False
+        mockpl.reset_mock()
+        mockpopen.reset_mock()
+        # Test with subprocess timeout.
+        r = rsyncWrapper(self.minimal_options)
+        r.sync_to(self.testdest)
+        with self.assertRaises(subprocess.TimeoutExpired):
+            r.wait(1)
+        self.assertFalse(mockpl().join.called)
+        # Test with everything ending within timeout.
+        mockpopen().wait.side_effect = None
+        r.wait(1)
+        self.assertEqual(
+            mockpopen().wait.call_args,
+            unittest.mock.call(timeout=1),
+            )
+        self.assertEqual(mockpl().join.call_count, 2)
+        # Test with 1st logger stopped, 2nd logger times out.
+        mockpl().is_alive.side_effect = [False, True]
+        mockpl.reset_mock()
+        with self.assertRaises(subprocess.TimeoutExpired):
+            r.wait(1)
+        self.assertEqual(mockpl().is_alive.call_count, 2)
+
 
 class TestPipeLogger(BasicSetup):
 
