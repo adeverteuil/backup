@@ -34,7 +34,7 @@ This module provides the following classes:
 # [ ] Add the configuration keys bw_warn and bw_err.
 # [ ] Make the Cycle instances loop between wait(timeout) and checking for
 #         exception raised in PipeLogger thread.
-# [ ] Write the warning and error methods in the PipeLogger class.
+# [X] Write the warning and error methods in the PipeLogger class.
 # [X] Make PipeLogger build a biggest files list and bytes transferred tally.
 
 
@@ -172,7 +172,7 @@ class rsyncWrapper(_logging.Logging):
             self.process.stderr.close()
 
 
-class PipeLogger(threading.Thread):
+class PipeLogger(_logging.Logging, threading.Thread):
 
     """Logs lines of text read from a stream."""
 
@@ -209,10 +209,11 @@ class PipeLogger(threading.Thread):
         """Log lines from stream using method until empty read."""
         #import pdb; pdb.set_trace()
         while not self.interrupt_event.is_set():
-            line = self.stream.readline().strip()
+            line = self.stream.readline()
             if line == "":
-                return
-            elif line.startswith("#"):
+                break
+            line = line.strip()
+            if line.startswith("#"):
                 # Extract the file size.
                 # We passed the --out-format option to rsync.
                 # Format is: "#" + file_size + "#" + file_name
@@ -224,4 +225,39 @@ class PipeLogger(threading.Thread):
                 self.biggest_files.append((size, line))
                 self.biggest_files.sort(key=lambda f: f[0], reverse=True)
                 del self.biggest_files[10:]
+
             self.method(line)
+
+            # Check error threshold at each iteration.
+            if self.bw_err and self.bytes_count >= self.bw_err:
+                self._logger.error(
+                    "Abort! Triggered by {}th byte updated.\n"
+                    "{} biggest files:\n{}".format(
+                        self.bw_err,
+                        len(self.biggest_files),
+                        self.format_biggest_files(),
+                        )
+                    )
+                # Stop the other PipeLogger thread, inform the main thread.
+                self.interrupt_event.set()
+                return
+        # Check warning threshold at the end of the loop.
+        if self.bw_warn and self.bytes_count >= self.bw_warn:
+            self._logger.warning(
+                "{} bytes updated (warning triggered at {} bytes).\n"
+                "{} biggest files:\n{}".format(
+                    self.bytes_count,
+                    self.bw_warn,
+                    len(self.biggest_files),
+                    self.format_biggest_files(),
+                    )
+                )
+
+    def format_biggest_files(self):
+        width = max([len(str(size)) for size, l in self.biggest_files])
+        return "\n".join(
+            [
+                "{:>{}} {}".format(
+                    size, width, line
+                    ) for size, line in self.biggest_files]
+            )

@@ -260,3 +260,47 @@ class TestPipeLogger(BasicSetup):
                 ],
             )
         self.assertEqual(p.bytes_count, sum(range(1, 13)))
+
+    def test_format_biggest_files(self):
+        p = PipeLogger("spam", "spam", "eggs")
+        p.biggest_files = [(i, str(i)) for i in range(5, 12)]
+        self.assertEqual(
+            p.format_biggest_files(),
+            " 5 5\n 6 6\n 7 7\n 8 8\n 9 9\n10 10\n11 11",
+            )
+
+    def test_warn(self):
+        r, w = os.pipe()
+        m = unittest.mock.Mock()
+        m.is_set.return_value = False
+        with self.assertLogs(
+            logging.getLogger("backup.engine.PipeLogger"),
+            logging.WARNING,
+            ) as logs:
+            with open(r) as rf, open(w, "w") as wf:
+                p = PipeLogger(rf, m, m)
+                p.bw_warn = 10
+                p.start()
+                wf.write(self.files_output)
+                wf.flush()
+                wf.close()
+                p.join()
+
+    def test_err(self):
+        r, w = os.pipe()
+        m = unittest.mock.Mock()
+        m.is_set.return_value = False
+        with self.assertLogs(
+            logging.getLogger("backup.engine.PipeLogger"),
+            logging.ERROR,
+            ) as logs:
+            with open(r) as rf, open(w, "w") as wf:
+                p = PipeLogger(rf, m, m)
+                p.bw_err = 10
+                p.start()
+                wf.write(self.files_output)
+                wf.flush()
+                wf.close()
+                p.join()
+                self.assertEqual(rf.readline(), "#3#3\n")
+        self.assertTrue(m.set.called)  # p.interrupt_event.set()
