@@ -214,3 +214,49 @@ class TestPipeLogger(BasicSetup):
             wf.flush()
             p.join()
             self.assertEqual(rf.readline(), "2\n")
+
+    files_output = (
+        "Some intro text\n"
+        "#2#2\n"
+        "#12#12\n"
+        "#3#3\n"
+        "#1#1\n"
+        "#4#4\n"
+        "#6#6\n"
+        "#7#7\n"
+        "#8#8\n"
+        "#11#11\n"
+        "#9#9\n"
+        "#5#5\n"
+        "#10#10\n"
+        "\n"
+        "Footer\n"
+        )
+
+    def test_biggest_files(self):
+        r, w = os.pipe()
+        m = unittest.mock.Mock()
+        m.is_set.return_value = False
+        with open(r) as rf, open(w, "w") as wf:
+            p = PipeLogger(rf, m, m)
+            p.start()
+            wf.write(self.files_output)
+            wf.flush()
+            wf.close()
+            p.join()
+        self.assertEqual(
+            p.biggest_files,
+            [
+                (12, "12"),
+                (11, "11"),
+                (10, "10"),
+                (9, "9"),
+                (8, "8"),
+                (7, "7"),
+                (6, "6"),
+                (5, "5"),
+                (4, "4"),
+                (3, "3"),
+                ],
+            )
+        self.assertEqual(p.bytes_count, sum(range(1, 13)))

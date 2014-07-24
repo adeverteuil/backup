@@ -35,7 +35,7 @@ This module provides the following classes:
 # [ ] Make the Cycle instances loop between wait(timeout) and checking for
 #         exception raised in PipeLogger thread.
 # [ ] Write the warning and error methods in the PipeLogger class.
-# [ ] Make PipeLogger build a biggest files list and bytes transferred tally.
+# [X] Make PipeLogger build a biggest files list and bytes transferred tally.
 
 
 import logging
@@ -198,30 +198,27 @@ class PipeLogger(threading.Thread):
         self.stream = stream
         self.method = method
         self.interrupt_event = interrupt_event
+        self.biggest_files = []
+        self.bytes_count = 0
         super().__init__(**kwargs)
 
     def run(self):
         """Log lines from stream using method until empty read."""
+        #import pdb; pdb.set_trace()
         while not self.interrupt_event.is_set():
-            line = self.stream.readline()
+            line = self.stream.readline().strip()
             if line == "":
                 return
             elif line.startswith("#"):
                 # Extract the file size.
-                # Because of the --out-format option passed to rsync.
+                # We passed the --out-format option to rsync.
                 # Format is: "#" + file_size + "#" + file_name
                 size, line = line[1:].split("#", 1)
                 size = int(size)  # in bytes
-            self.method(line.strip())
-
-    def count_bytes(self, line):
-        """Count bytes transferred and build list of biggest files transferred.
-
-        Parameters:
-        line -- one line of the stdout stream of the rsync process.
-        """
-        # Extract the file size.
-        # Because of the --out-format option passed to rsync.
-        # Format is: "#" + file_size + "#" + file_name
-        size, line = line[1:].split("#", 1)
-        size = int(size)  # in bytes
+                # Update the tally.
+                self.bytes_count += size
+                # Update the biggest files list: append, sort, truncate.
+                self.biggest_files.append((size, line))
+                self.biggest_files.sort(key=lambda f: f[0], reverse=True)
+                del self.biggest_files[10:]
+            self.method(line)
