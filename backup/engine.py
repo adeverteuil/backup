@@ -26,6 +26,18 @@ This module provides the following classes:
 """
 
 
+#TODO for adding trigger support.
+# [] Test the wait method with timeout argument.
+# [] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
+# [] Create the FLAGGED status.
+# [] Create the --force command line argument.
+# [] Add the configuration keys bw_warn and bw_err.
+# [] Make the Cycle instances loop between wait(timeout) and checking for
+#        exception raised in PipeLogger thread.
+# [] Write the warning and error methods in the PipeLogger class.
+# [] Make PipeLogger build a biggest files list and bytes transferred tally.
+
+
 import logging
 import os
 import os.path
