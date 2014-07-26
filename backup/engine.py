@@ -31,7 +31,7 @@ This module provides the following classes:
 # [X] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
 # [ ] Create the FLAGGED status.
 # [ ] Create the --force command line argument.
-# [ ] Add the configuration keys bw_warn and bw_err.
+# [X] Add the configuration keys bw_warn and bw_err.
 # [ ] Make the Cycle instances loop between wait(timeout) and checking for
 #         exception raised in PipeLogger thread.
 # [X] Write the warning and error methods in the PipeLogger class.
@@ -141,6 +141,8 @@ class rsyncWrapper(_logging.Logging):
                 self.process.stdout,
                 logging.getLogger("rsync.stdout").info,
                 self.interrupt_event,
+                bw_warn=int(self.options['bw_warn']),
+                bw_err=int(self.options['bw_err']),
                 ),
             'stderr': PipeLogger(
                 self.process.stderr,

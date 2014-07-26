@@ -36,6 +36,8 @@ class TestEngine(BasicSetup):
                 'dest': self.testdest,
                 'dry-run': "False",
                 'configdir': self.configdir,
+                'bw_warn': "0",
+                'bw_err': "0",
                 }
             )['DEFAULT']
 
@@ -154,6 +156,42 @@ class TestEngine(BasicSetup):
         with self.assertRaises(subprocess.TimeoutExpired):
             r.wait(1)
         self.assertEqual(mockpl().is_alive.call_count, 2)
+
+    def test_bw_err_1(self):
+        self.minimal_options['bw_err'] = "1"
+        r = rsyncWrapper(self.minimal_options)
+        with self.assertLogs(
+            logging.getLogger("backup.engine.PipeLogger"),
+            logging.ERROR,
+            ):
+            r.sync_to(self.testdest)
+            r.wait()
+            r.close_pipes()
+        self.assertTrue(r.interrupt_event.is_set())
+
+    @unittest.mock.patch('logging.getLogger')
+    def test_bw_err_and_bw_warn_1000000(self, mocklogger):
+        self.minimal_options['bw_err'] = "1000000"
+        self.minimal_options['bw_warn'] = "1000000"
+        r = rsyncWrapper(self.minimal_options)
+        r.sync_to(self.testdest)
+        r.wait()
+        r.close_pipes()
+        self.assertFalse(r.interrupt_event.is_set())
+        self.assertFalse(mocklogger().warning.called)
+        self.assertFalse(mocklogger().error.called)
+
+    def test_bw_warn(self):
+        self.minimal_options['bw_warn'] = "1"
+        r = rsyncWrapper(self.minimal_options)
+        with self.assertLogs(
+            logging.getLogger("backup.engine.PipeLogger"),
+            logging.WARNING,
+            ):
+            r.sync_to(self.testdest)
+            r.wait()
+            r.close_pipes()
+        self.assertFalse(r.interrupt_event.is_set())
 
 
 class TestPipeLogger(BasicSetup):
