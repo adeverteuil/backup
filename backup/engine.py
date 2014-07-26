@@ -29,7 +29,7 @@ This module provides the following classes:
 #TODO for adding trigger support.
 # [X] Test the wait method with timeout argument.
 # [X] Add keyword arguments bw_warn and bw_err to PipeLogger constructor.
-# [ ] Create the FLAGGED status.
+# [X] Create the FLAGGED status.
 # [ ] Create the --force command line argument.
 # [X] Add the configuration keys bw_warn and bw_err.
 # [X] Make the Cycle instances loop between wait(timeout) and checking for

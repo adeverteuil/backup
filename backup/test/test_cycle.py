@@ -92,6 +92,24 @@ class TestCycle(BasicSetup):
         with cycle, self.assertRaises(RuntimeError):
             cycle.create_new_snapshot(rsync)
         self.assertTrue(popenmock().kill.called)
+        self.assertEqual(cycle.snapshots[0].status, FLAGGED)
+
+    def test_resume_FLAGGED_snapshot(self):
+        # Simulate an aborted sync.
+        os.chdir(self.testdest)
+        os.mkdir("hourly.wip")
+        with open(".hourly.wip.status", "w") as f:
+            f.write(str(FLAGGED))
+        # Setup as usual.
+        cycle = Cycle(self.testdest, "hourly")
+        config= Configuration(
+            argv=["-c", self.configfile],
+            environ={},
+            ).configure()
+        rsync = rsyncWrapper(config['default'])
+        # Go.
+        with cycle, self.assertRaises(RuntimeError):
+            cycle.create_new_snapshot(rsync)
 
     def test_build_snapshots_list(self):
         os.chdir(self.testdest)

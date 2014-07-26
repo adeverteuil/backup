@@ -161,6 +161,22 @@ class TestSnapshot(BasicSetup):
             with self.assertRaises(RuntimeError):
                 s.status = status
 
+    def test_status_FLAGGED(self):
+        s = Snapshot(self.testdest, "interval")
+        s.mkdir()
+        s.status = SYNCING
+        self.assertEqual(s.status, SYNCING)
+        s.status = FLAGGED
+        self.assertEqual(s.status, FLAGGED)
+        s.status = SYNCING
+        self.assertEqual(s.status, FLAGGED)
+        s.status = DELETING
+        self.assertEqual(s.status, DELETING)
+        s.status = DELETED
+        self.assertEqual(s.status, DELETED)
+        with self.assertRaises(RuntimeError):
+            s.status = FLAGGED
+
     def test_delete(self):
         # Try to delete a VOID snapshot.
         s = Snapshot(self.testdest, "interval")

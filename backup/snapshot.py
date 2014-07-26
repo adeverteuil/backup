@@ -50,9 +50,10 @@ from .locking import Lockable
 VOID = 0
 BLANK = 1
 SYNCING = 2
-COMPLETE = 3
-DELETING = 4
-DELETED = 5
+FLAGGED = 3
+COMPLETE = 4
+DELETING = 5
+DELETED = 6
 _status_count = DELETED+1  # For "assert status in range(_status_count)".
 # Status lookup for logging purposes.
 _status_lookup = {
@@ -60,9 +61,10 @@ _status_lookup = {
     0: "VOID",
     1: "BLANK",
     2: "SYNCING",
-    3: "COMPLETE",
-    4: "DELETING",
-    5: "DELETED",
+    3: "FLAGGED",
+    4: "COMPLETE",
+    5: "DELETING",
+    6: "DELETED",
     }
 
 
@@ -101,10 +103,19 @@ class Snapshot(_logging.Logging, Lockable):
     Methods:
         infer_status
         mkdir -- VOID -> BLANK
-        delete -- BLANK, SYNCING, COMPLETE, DELETING -> DELETING
+        delete -- BLANK, SYNCING, FLAGGED, COMPLETE, DELETING -> DELETED
         acquire
         release
         is_locked
+
+    Status semantics:
+        VOID -- Snapshot instance not yet existing on the filesystem.
+        BLANK -- Snapshot is an empty directory.
+        SYNCING -- Flagged as dirty while rsync is working. Can be resumed.
+        FLAGGED -- Bandwidth error triggered. Can be resumed with --force.
+        COMPLETE -- Clean snapshot, safe for rsync to link-dest from.
+        DELETING -- In the process of removing the tree. Flagged as dirty.
+        DELETED -- Same as VOID, but cannot change status anymore.
     """
 
     _timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
@@ -225,6 +236,14 @@ class Snapshot(_logging.Logging, Lockable):
         Normal flow:
             VOID -> BLANK -> SYNCING -> COMPLETE -> DELETING -> DELETED
 
+        Error flow:
+            VOID -> BLANK -> SYNCING -> FLAGGED
+                Resume with --force after verifying errors.
+            FLAGGED -> FLAGGED -> COMPLETE -> DELETING -> DELETED
+                Notice how the status does not change to SYNCING. This is to
+                make sure every time this snapshot is resumed, --force will
+                be required until it is complete.
+
         Return values (compare with module-level constants):
             VOID : Snapshot doesn't exist on the filesystem.
             BLANK : Directory exists and is empty.
@@ -238,7 +257,7 @@ class Snapshot(_logging.Logging, Lockable):
 
     @if_not_dry_run
     def _status_file_check(self):
-        if self._status in (SYNCING, DELETING):
+        if self._status in (SYNCING, FLAGGED, DELETING):
             with open(self.statusfile) as f:
                 filestatus = int(f.read())
                 assert filestatus == self._status, _status_lookup[filestatus]
@@ -247,8 +266,8 @@ class Snapshot(_logging.Logging, Lockable):
     def status(self, value):
         """Setter for the status property.
 
-        The status SYNCING and DELETING create a statusfile which flags
-        this snapshot as "dirty" and not safe for link-dest.
+        The status SYNCING, FLAGGED and DELETING create a statusfile
+        which flags this snapshot as "dirty" and not safe for link-dest.
         """
         assert value in range(_status_count), value
         self._logger.debug(
@@ -260,7 +279,9 @@ class Snapshot(_logging.Logging, Lockable):
         if self.status == DELETED and value != self.status:
             msg = "Cannot change the status of a deleted snapshot."
             raise RuntimeError(msg)
-        if value in (SYNCING, DELETING):
+        if self.status == FLAGGED and value == SYNCING:
+            value = FLAGGED
+        if value in (SYNCING, FLAGGED, DELETING):
             self._create_file(self.statusfile, str(value))
         else:
             try:
@@ -286,7 +307,7 @@ class Snapshot(_logging.Logging, Lockable):
         else:
             try:
                 with open(self.statusfile) as f:
-                    # This covers the DELETING and SYNCING cases.
+                    # This covers the SYNCING, FLAGGED and DELETING cases.
                     status = int(f.read())
             except FileNotFoundError:
                 if os.listdir(self.path):

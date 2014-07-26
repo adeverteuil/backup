@@ -125,7 +125,11 @@ class Cycle(Lockable, _logging.Logging):
 
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""
-        if len(self.snapshots) > 0 and self.snapshots[0].status == SYNCING:
+        if len(self.snapshots) > 0 and self.snapshots[0].status == FLAGGED:
+            raise RuntimeError(
+                "The last snapshot is FLAGGED; an error occurred before."
+                )
+        elif len(self.snapshots) > 0 and self.snapshots[0].status == SYNCING:
             # Resume an aborted sync.
             snapshot = self.snapshots[0]
             msg = "Resuming snapshot {}.".format(snapshot.path)
@@ -161,10 +165,14 @@ class Cycle(Lockable, _logging.Logging):
                                 engine.process.kill()
                             except OSError:
                                 # Don't care if subprocess already exited.
-                                pass
-                            raise RuntimeError(
-                                "Bandwidth safety kill switch triggered."
-                                )
+                                self._logger.info(
+                                    "rsync had time to finish anyways."
+                                    )
+                            else:
+                                snapshot.status = FLAGGED
+                                raise RuntimeError(
+                                    "Bandwidth safety kill switch triggered."
+                                    )
                 if returncode > 0:
                     raise RuntimeError(
                         "Engine returned {}.".format(returncode)
