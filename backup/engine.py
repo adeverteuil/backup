@@ -32,7 +32,7 @@ This module provides the following classes:
 # [ ] Create the FLAGGED status.
 # [ ] Create the --force command line argument.
 # [X] Add the configuration keys bw_warn and bw_err.
-# [ ] Make the Cycle instances loop between wait(timeout) and checking for
+# [X] Make the Cycle instances loop between wait(timeout) and checking for
 #         exception raised in PipeLogger thread.
 # [X] Write the warning and error methods in the PipeLogger class.
 # [X] Make PipeLogger build a biggest files list and bytes transferred tally.
@@ -58,10 +58,10 @@ class rsyncWrapper(_logging.Logging):
         """
         super().__init__(**kwargs)
         self.options = options
-        # This event is passed to PipeLogger threads. While waiting for the
-        # subprocess to finish, the main thread should handle KeyboardInterrupt
-        # and set() it before re-raising. This will cause the threads to die.
-        self.interrupt_event = threading.Event()
+        # This event is passed to the PipeLogger thread that reads rsync's
+        # stdin. If the bandwidth kill switch is triggered, the event will be
+        # set so that the main thread can kill rsync.
+        self.kill_switch_event = threading.Event()
 
     @property
     def args(self):
@@ -140,14 +140,13 @@ class rsyncWrapper(_logging.Logging):
             'stdout': PipeLogger(
                 self.process.stdout,
                 logging.getLogger("rsync.stdout").info,
-                self.interrupt_event,
+                self.kill_switch_event,
                 bw_warn=int(self.options['bw_warn']),
                 bw_err=int(self.options['bw_err']),
                 ),
             'stderr': PipeLogger(
                 self.process.stderr,
                 logging.getLogger("rsync.stderr").warning,
-                self.interrupt_event,
                 ),
             }
         for logger in self.loggers.values():
@@ -178,15 +177,16 @@ class PipeLogger(_logging.Logging, threading.Thread):
 
     """Logs lines of text read from a stream."""
 
-    def __init__(self, stream, method, interrupt_event,
-                 bw_warn=0, bw_err=0, **kwargs):
+    def __init__(self, stream, method,
+                 kill_switch_event=None, bw_warn=0, bw_err=0, **kwargs):
         """PipeLogger constructor.
 
         Takes two positional arguments:
         stream -- a text stream (with a readline() method)
         method -- a function that takes a string argument
-        interrupt_event -- a threading.Event() that causes the thread to exit
-            when it is set.
+        kill_switch_event -- a threading.Event() that alerts the calling
+            thread that the process being logged is probably doing something
+            wrong and must be killed.
 
         Typically, stream is either the stdout or stderr stream of a
         child process. method is a method of a Logger object.
@@ -200,7 +200,7 @@ class PipeLogger(_logging.Logging, threading.Thread):
         """
         self.stream = stream
         self.method = method
-        self.interrupt_event = interrupt_event
+        self.kill_switch_event = kill_switch_event
         self.bw_warn = bw_warn
         self.bw_err = bw_err
         self.biggest_files = []
@@ -210,7 +210,7 @@ class PipeLogger(_logging.Logging, threading.Thread):
     def run(self):
         """Log lines from stream using method until empty read."""
         #import pdb; pdb.set_trace()
-        while not self.interrupt_event.is_set():
+        while True:
             line = self.stream.readline()
             if line == "":
                 break
@@ -231,7 +231,8 @@ class PipeLogger(_logging.Logging, threading.Thread):
             self.method(line)
 
             # Check error threshold at each iteration.
-            if self.bw_err and self.bytes_count >= self.bw_err:
+            if (self.bw_err and self.bytes_count >= self.bw_err and
+                not self.kill_switch_event.is_set()):
                 self._logger.error(
                     "Abort! Triggered by {}th byte updated.\n"
                     "{} biggest files:\n{}".format(
@@ -240,11 +241,11 @@ class PipeLogger(_logging.Logging, threading.Thread):
                         self.format_biggest_files(),
                         )
                     )
-                # Stop the other PipeLogger thread, inform the main thread.
-                self.interrupt_event.set()
-                return
+                # Inform the main thread.
+                self.kill_switch_event.set()
         # Check warning threshold at the end of the loop.
-        if self.bw_warn and self.bytes_count >= self.bw_warn:
+        if (self.bw_warn and self.bytes_count >= self.bw_warn and
+            not self.kill_switch_event.is_set()):
             self._logger.warning(
                 "{} bytes updated (warning triggered at {} bytes).\n"
                 "{} biggest files:\n{}".format(

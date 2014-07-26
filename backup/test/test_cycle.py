@@ -17,6 +17,7 @@
 
 import os
 import glob
+import unittest.mock
 
 from .basic_setup import BasicSetup
 from ..cycle import *
@@ -72,6 +73,25 @@ class TestCycle(BasicSetup):
             os.stat(os.listdir()[0]).st_ino,
             inode
             )
+
+    @unittest.mock.patch("subprocess.Popen")
+    def test_create_new_snapshot_trigger_bw_err(self, popenmock):
+        # Setup the mock.
+        popenmock().stdout.readline.side_effect = [
+            "#10#file1\n", "#1#file2\n", "",
+            ]
+        popenmock().stderr.readline.return_value = ""
+        popenmock().wait.side_effect = subprocess.TimeoutExpired("rsync", 0.1)
+        # Setup the test.
+        cycle = Cycle(self.testdest, "hourly")
+        configuration = Configuration(argv=["-c", self.configfile], environ={})
+        config = configuration.configure()
+        config['default']['bw_err'] = "10"
+        rsync = rsyncWrapper(config['default'])
+        # Here is the test.
+        with cycle, self.assertRaises(RuntimeError):
+            cycle.create_new_snapshot(rsync)
+        self.assertTrue(popenmock().kill.called)
 
     def test_build_snapshots_list(self):
         os.chdir(self.testdest)

@@ -167,7 +167,7 @@ class TestEngine(BasicSetup):
             r.sync_to(self.testdest)
             r.wait()
             r.close_pipes()
-        self.assertTrue(r.interrupt_event.is_set())
+        self.assertTrue(r.kill_switch_event.is_set())
 
     @unittest.mock.patch('logging.getLogger')
     def test_bw_err_and_bw_warn_1000000(self, mocklogger):
@@ -177,7 +177,7 @@ class TestEngine(BasicSetup):
         r.sync_to(self.testdest)
         r.wait()
         r.close_pipes()
-        self.assertFalse(r.interrupt_event.is_set())
+        self.assertFalse(r.kill_switch_event.is_set())
         self.assertFalse(mocklogger().warning.called)
         self.assertFalse(mocklogger().error.called)
 
@@ -191,7 +191,7 @@ class TestEngine(BasicSetup):
             r.sync_to(self.testdest)
             r.wait()
             r.close_pipes()
-        self.assertFalse(r.interrupt_event.is_set())
+        self.assertFalse(r.kill_switch_event.is_set())
 
 
 class TestPipeLogger(BasicSetup):
@@ -236,22 +236,6 @@ class TestPipeLogger(BasicSetup):
             self.assertEqual(
                 cm.output,
                 ["WARNING:test_using_logger:C", "WARNING:test_using_logger:D"])
-
-    def test_interrupt_event(self):
-        r, w = os.pipe()
-        e = threading.Event()
-        m = unittest.mock.Mock()
-        with open(r) as rf, open(w, "w") as wf:
-            p = PipeLogger(rf, m, e)
-            p.start()
-            wf.write("1\n")
-            wf.flush()
-            # The thread is now blocked, waiting for the next line.
-            e.set() # The thread will return before trying to read line 2.
-            wf.write("2\n")
-            wf.flush()
-            p.join()
-            self.assertEqual(rf.readline(), "2\n")
 
     files_output = (
         "Some intro text\n"
@@ -314,15 +298,14 @@ class TestPipeLogger(BasicSetup):
         with self.assertLogs(
             logging.getLogger("backup.engine.PipeLogger"),
             logging.WARNING,
-            ) as logs:
-            with open(r) as rf, open(w, "w") as wf:
-                p = PipeLogger(rf, m, m)
-                p.bw_warn = 10
-                p.start()
-                wf.write(self.files_output)
-                wf.flush()
-                wf.close()
-                p.join()
+            ) as logs, open(r) as rf, open(w, "w") as wf:
+            p = PipeLogger(rf, m, m)
+            p.bw_warn = 10
+            p.start()
+            wf.write(self.files_output)
+            wf.flush()
+            wf.close()
+            p.join()
 
     def test_err(self):
         r, w = os.pipe()
@@ -331,14 +314,13 @@ class TestPipeLogger(BasicSetup):
         with self.assertLogs(
             logging.getLogger("backup.engine.PipeLogger"),
             logging.ERROR,
-            ) as logs:
-            with open(r) as rf, open(w, "w") as wf:
-                p = PipeLogger(rf, m, m)
-                p.bw_err = 10
-                p.start()
-                wf.write(self.files_output)
-                wf.flush()
-                wf.close()
-                p.join()
-                self.assertEqual(rf.readline(), "#3#3\n")
-        self.assertTrue(m.set.called)  # p.interrupt_event.set()
+            ) as logs, open(r) as rf, open(w, "w") as wf:
+            p = PipeLogger(rf, m, m)
+            p.bw_err = 10
+            p.start()
+            wf.write(self.files_output)
+            wf.flush()
+            wf.close()
+            p.join()
+            self.assertEqual(rf.readline(), "")
+        self.assertTrue(m.set.called)  # p.kill_switch_event.set()

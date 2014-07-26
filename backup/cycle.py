@@ -147,13 +147,36 @@ class Cycle(Lockable, _logging.Logging):
                 else:
                     linkdestpath = None
                 engine.sync_to(snapshot.path, linkdestpath)
-                returncode = engine.wait()
+                while True:
+                    try:
+                        returncode = engine.wait(0.1)
+                    except subprocess.TimeoutExpired:
+                        continue  # Subprocess not finished.
+                    else:
+                        break  # Subprocess exited.
+                    finally:
+                        if engine.kill_switch_event.is_set():
+                            # PipeLogger instance logged an error.
+                            try:
+                                engine.process.kill()
+                            except OSError:
+                                # Don't care if subprocess already exited.
+                                pass
+                            raise RuntimeError(
+                                "Bandwidth safety kill switch triggered."
+                                )
                 if returncode > 0:
                     raise RuntimeError(
                         "Engine returned {}.".format(returncode)
                         )
             except KeyboardInterrupt:
-                engine.interrupt_event.set()
+                try:
+                    engine.process.terminate()
+                except OSError:
+                    pass
+                else:
+                    self._logger.info("Waiting for subprocess to terminate.")
+                    engine.wait()
                 raise
             finally:
                 engine.close_pipes()
