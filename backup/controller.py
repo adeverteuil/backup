@@ -25,7 +25,7 @@ import traceback
 
 from . import _logging
 from .config import *
-from .cycle import Cycle
+from .cycle import Cycle, FlaggedSnapshotError
 from .dry_run import if_not_dry_run
 from .engine import rsyncWrapper
 
@@ -59,6 +59,9 @@ class Controller(_logging.Logging):
         for host in hosts:
             try:
                 self._run_host(host)
+            except FlaggedSnapshotError:
+                if not self.config['default'].getboolean('force'):
+                    raise
             except Exception:
                 errors = 1
                 self._log_exception(*sys.exc_info())

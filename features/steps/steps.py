@@ -1,3 +1,4 @@
+import configparser
 import datetime
 import glob
 import os
@@ -70,3 +71,12 @@ def step_impl(context, host, n, th, interval, file):
     dirs = sorted(glob.glob("{}.*".format(interval)), reverse=True)
     assert file in os.listdir(dirs[n-1]), os.listdir(dirs[n-1])
     os.chdir(cwd)
+
+@given("the value of {key} in section {section} is {value}")
+def step_impl(context, key, section, value):
+    config = configparser.ConfigParser()
+    with open(context.configfile) as f:
+        config.read_file(f, context.configfile)
+    config[section][key] = value
+    with open(context.configfile, "w") as f:
+        config.write(f)

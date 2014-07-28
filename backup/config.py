@@ -76,6 +76,7 @@ DEFAULTS = {
     'warn bytes transferred': str(1 * 10**8),  # 100MB
     'bw_warn': "0",
     'bw_err': "0",
+    'force': "False",
     }
 
 
@@ -126,6 +127,10 @@ class Configuration(_logging.Logging):
             )
         parser.add_argument("--dry-run", "-n",
             help="Perform a trial run with no changes made.",
+            action="store_true",
+            )
+        parser.add_argument("--force", "-f",
+            help="Disable any bw_err trigger.",
             action="store_true",
             )
         parser.add_argument("-e",
@@ -237,3 +242,4 @@ class Configuration(_logging.Logging):
         if_not_dry_run.dry_run = self.args.dry_run
         if self.args.e is not None:
             self.config.defaults()['rsync'] = self.args.e
+        self.config.defaults()['force'] = str(self.args.force)

@@ -89,7 +89,7 @@ class TestCycle(BasicSetup):
         config['default']['bw_err'] = "10"
         rsync = rsyncWrapper(config['default'])
         # Here is the test.
-        with cycle, self.assertRaises(RuntimeError):
+        with cycle, self.assertRaises(FlaggedSnapshotError):
             cycle.create_new_snapshot(rsync)
         self.assertTrue(popenmock().kill.called)
         self.assertEqual(cycle.snapshots[0].status, FLAGGED)
@@ -108,7 +108,7 @@ class TestCycle(BasicSetup):
             ).configure()
         rsync = rsyncWrapper(config['default'])
         # Go.
-        with cycle, self.assertRaises(RuntimeError):
+        with cycle, self.assertRaises(FlaggedSnapshotError):
             cycle.create_new_snapshot(rsync)
 
     def test_build_snapshots_list(self):

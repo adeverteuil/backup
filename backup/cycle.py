@@ -34,6 +34,23 @@ from .locking import Lockable
 from .snapshot import *
 
 
+class FlaggedSnapshotError(Exception):
+
+    """This exception halts a backup to prevent excessive bandwidth usage.
+
+    This exception is raise on two occasions:
+    1.  PipeLogger counts the number of bytes transferred in real
+        time. When that number exceeds bw_err, it sets an event, which
+        is checked by Cycle, which in turn raises FlaggedSnapshotError.
+    2.  Cycle notices that the status of the last backup is FLAGGED.
+
+    If the --force option was given on the command line, the Controller
+    instance will catch the exception and suppress it.
+    """
+
+    pass
+
+
 class Cycle(Lockable, _logging.Logging):
 
     """Manages a group of Snapshots of the same interval."""
@@ -126,8 +143,9 @@ class Cycle(Lockable, _logging.Logging):
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""
         if len(self.snapshots) > 0 and self.snapshots[0].status == FLAGGED:
-            raise RuntimeError(
-                "The last snapshot is FLAGGED; an error occurred before."
+            raise FlaggedSnapshotError(
+                "The last snapshot is FLAGGED; check for errors and run "
+                "backup again manually with the --force argument."
                 )
         elif len(self.snapshots) > 0 and self.snapshots[0].status == SYNCING:
             # Resume an aborted sync.
@@ -168,9 +186,9 @@ class Cycle(Lockable, _logging.Logging):
                                 self._logger.info(
                                     "rsync had time to finish anyways."
                                     )
-                            else:
+                            finally:
                                 snapshot.status = FLAGGED
-                                raise RuntimeError(
+                                raise FlaggedSnapshotError(
                                     "Bandwidth safety kill switch triggered."
                                     )
                 if returncode > 0:

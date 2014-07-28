@@ -42,7 +42,6 @@ def before_scenario(context, scenario):
             "dest=" + context.testdest + "\n"
             "excludefile=/dev/null\n"
             "filterfile=/dev/null\n"
-            "hosts=test_host\n"
             "[test_host]\n"
             "hourlies = 2\n"
             "dailies = 2\n"
