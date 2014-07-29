@@ -132,7 +132,7 @@ class Logging:
     def __init__(self, *args, **kwargs):
         """Define a _logger attribute in a uniform way across the program."""
         super().__init__(*args, **kwargs)
-        # The name of the logger is the qualified name of the subclass.
+        # The name of the logger is the qualified name of the superclass.
         # For example, if the C class in the m.s module subclasses Logging,
         # Its _logger will be called "m.s.C".
         self._logger = logging.getLogger(
