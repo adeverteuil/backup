@@ -1,13 +1,28 @@
 Alexandre's backup script
 =========================
 
-This script is a work in progress. It is not usable at this point.
+:Author: alexandre@deverteuil.net
+:Date:   2014-07-28
+:Copyright: GPL
 
-It is intended to perform backups of several machines with snapshot at
-different time intervals. A rigid and flexible mechanism will make it
-easy to monitor your backups in permanence.
+Introduction
+------------
 
-.. note:: To do: make this more like a man page.
+This program does incremental backups of one or several machines using
+rsync. Unchanged files are hard-linked so it can manage several hourly
+and daily backups with minimal storage space increase. It is written in
+Python 3 and has absolute minimal dependencies.
+
+History
+-------
+
+This is a rewrite of my personal backup program that I have been using
+and improving since 2010. I started with a new git history; the former
+one contained sensitive information, such as passwords and names of my
+relatives, and my coding has improved a lot over time. I think this is a
+much more maintainable and readable code, and I am pretty confident that
+the experience I gained from the legacy version makes this one quite
+reliable.
 
 Requirements
 ------------
@@ -16,77 +31,26 @@ Requirements
 * rsync
 * ssh with an ssh-agent setup (for remote backups)
 
-Directory rationale
--------------------
+Features
+--------
 
-The default directory used as a destination for backups is
-``/root/var/backups``. This is to make it as read-only as possible. You
-should bind-mount this directory to ``/var/backups`` with option ``ro``
-using these commands in your ``rc.local`` or whatever script is called
-after the system boots :
-
-::
-
-    mount -o bind /root/var/backups /var/backups
-    mount -o remount,ro /var/backups
-
-This has to be done in two steps because a bind mount has the same
-options as the origin filesystem even if you specify other options. i.e.
-``-o bind,ro`` will result in a writable filesystem.
-
-``systemd`` unit files that accomplish this are provided in the project
-directory under "systemd". For a local installation, these files may
-be placed in ``/etc/systemd/system``. Package maintainers may install
-these files in ``/usr/lib/systemd/system``. Then, the command ``systemctl
-enable var-backups.automount`` must be executed as root.
-
-File "NOT_MOUNTED"
-------------------
-
-If the destination directory is the root of a mount point, create a file
-named "``NOT_MOUNTED``" before mounting the filesystem. When the filesystem
-is mounted, this file will not be visible. If this file is seen, backup
-will assume the destination media is not mounted and will abort with
-exit code 11.
-
-.. note:: Not yet implemented.
-
-``locate`` hint
----------------
-
-Using locate to look for a file will result in a flood of hits from the
-``/var/backups`` filesystem. I suggest pruning ``/var/backups`` from
-the ``mlocate.db`` and constructing a ``backup.db`` specifically for
-searching a file in the backup directory.
-
-1.  Append "``/var/backups``" to the ``PRUNEPATHS`` variable
-
-    ::
-
-        in /etc/updatedb.conf. Example :
-        PRUNEPATHS = "/media /mnt /tmp […] /var/backups"
-
-2.  Put this command in a script in ``/etc/cron.daily`` :
-
-    ::
-
-        [ -x /usr/bin/updatedb ] && \
-        /usr/bin/updatedb --prunepaths "" -U /var/backups \
-        -o /var/lib/mlocate/backups.db
-
-3.  add this alias to your bashrc :
-
-    ::
-
-        alias baklocate="locate -d /var/lib/mlocate/backup.db"
-
-Multiple intervals of rotation
-------------------------------
-
-.. note:: To do.
+* Detailed logging to log files, but quiet on stdout unless something
+  goes wrong.
+* Configurable with global and host specific keys.
+* Bandwidth cap protection, useful if you have a lame ISP.
+* One hourly call processes all hosts and backup intervals (hourly + daily).
+* Dry run option.
+* Locking mechanism and state files makes resuming after a crash trivial.
+* Over 50 unit tests, + integration tests with ``behave``.
 
 Development
 -----------
+
+Welcome contributions
+~~~~~~~~~~~~~~~~~~~~~
+
+Any comments, suggestions, bug reports, log message rewording or
+corrections. Feel free to address me in french or english.
 
 Running tests
 ~~~~~~~~~~~~~
@@ -113,6 +77,63 @@ Unit tests are also provided.
 Installing
 ~~~~~~~~~~
 
-The command line script may be installed for development purposes. In  .
-your virtualenv, use ``pip install -e .``. I will be maintaining an     .
-ArchLinux PKGBUILD when version 1.0 is out                             .
+The command line script may be installed for development purposes. In
+your virtualenv, use "``pip install -e .``". I will be maintaining an
+ArchLinux PKGBUILD when version 1.0 is out.
+
+"Undocumented" ``-e`` option
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Besides the ``--dry-run`` option, useful for debugging and trying
+things out, there is an ``-e EXECUTABLE`` option that takes the name
+of an optional executable as an argument, and will swap it in place of
+rsync. By default, this will be ``echo``. This will give a little less
+output, but will make the dry-run finish much more quickly.
+
+Trying it out on a small scale first
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In ~/tmp, create a ``localhost`` directory and the ``backup``
+configuration file with the following content:
+
+::
+
+    [default]
+    configdir = /dev/null
+    dest = /home/<your_username>/tmp
+
+    [localhost]
+    sourcedirs = <any directory you want to use for the purpose>
+
+Get in your virtualenv, run ``pip install -e .`` from the project
+directory, then run ``backup -c /home/<your_username>/tmp/backup -v``.
+
+Short term goals
+~~~~~~~~~~~~~~~~
+
+* Experiment and improve user experience, output messages.
+* Improve unit tests readability.
+* Maybe use the ``--checksum`` rsync option once a month for every host.
+* Read documentation produced with ``pydoc`` and make sure it's up to date and thorough.
+* ``systemd`` unit files (backup.timer, backup.service).
+* Unhide status and lock files?
+* Package for Archlinux.
+* Warn about stale backups (that are more than x days old).
+
+Copying
+-------
+
+Copyright © 2014  Alexandre de Verteuil
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
