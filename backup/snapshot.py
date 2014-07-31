@@ -21,17 +21,13 @@ Classes:
     Snapshot
         Abstraction object for a backup snapshot.
 
-Constants indicating the status of a Snapshot instance:
-    VOID
-    BLANK
-    SYNCING
-    COMPLETE
-    DELETING
-    DELETED
+    Status
+        Class of Enum type.
 """
 
 
 import datetime
+import enum
 import errno
 import glob
 import logging
@@ -46,26 +42,10 @@ from .dry_run import if_not_dry_run
 from .locking import Lockable
 
 
-# Status constants for Snapshot objects.
-VOID = 0
-BLANK = 1
-SYNCING = 2
-FLAGGED = 3
-COMPLETE = 4
-DELETING = 5
-DELETED = 6
-_status_count = DELETED+1  # For "assert status in range(_status_count)".
-# Status lookup for logging purposes.
-_status_lookup = {
-    None: "UNSET",
-    0: "VOID",
-    1: "BLANK",
-    2: "SYNCING",
-    3: "FLAGGED",
-    4: "COMPLETE",
-    5: "DELETING",
-    6: "DELETED",
-    }
+Status = enum.Enum(
+    "Status",
+    "void blank syncing, flagged, complete, deleting, deleted",
+    )
 
 
 class Snapshot(_logging.Logging, Lockable):
@@ -102,20 +82,20 @@ class Snapshot(_logging.Logging, Lockable):
 
     Methods:
         infer_status
-        mkdir -- VOID -> BLANK
-        delete -- BLANK, SYNCING, FLAGGED, COMPLETE, DELETING -> DELETED
+        mkdir -- void -> blank
+        delete -- blank, syncing, flagged, complete, deleting -> deleted
         acquire
         release
         is_locked
 
     Status semantics:
-        VOID -- Snapshot instance not yet existing on the filesystem.
-        BLANK -- Snapshot is an empty directory.
-        SYNCING -- Flagged as dirty while rsync is working. Can be resumed.
-        FLAGGED -- Bandwidth error triggered. Can be resumed with --force.
-        COMPLETE -- Clean snapshot, safe for rsync to link-dest from.
-        DELETING -- In the process of removing the tree. Flagged as dirty.
-        DELETED -- Same as VOID, but cannot change status anymore.
+        void -- Snapshot instance not yet existing on the filesystem.
+        blank -- Snapshot is an empty directory.
+        syncing -- Flagged as dirty while rsync is working. Can be resumed.
+        flagged -- Bandwidth error triggered. Can be resumed with --force.
+        complete -- Clean snapshot, safe for rsync to link-dest from.
+        deleting -- In the process of removing the tree. Flagged as dirty.
+        deleted -- Same as VOID, but cannot change status anymore.
     """
 
     _timeformat = "%Y-%m-%dT%H:%M"  # ISO 8601 format: yyyy-mm-ddThh:mm
@@ -234,61 +214,54 @@ class Snapshot(_logging.Logging, Lockable):
         """Status of this Snapshot.
 
         Normal flow:
-            VOID -> BLANK -> SYNCING -> COMPLETE -> DELETING -> DELETED
+            void -> blank -> syncing -> complete -> deleting -> deleted
 
         Error flow:
-            VOID -> BLANK -> SYNCING -> FLAGGED
+            void -> blank -> syncing -> flagged
                 Resume with --force after verifying errors.
-            FLAGGED -> FLAGGED -> COMPLETE -> DELETING -> DELETED
-                Notice how the status does not change to SYNCING. This is to
+            flagged -> flagged -> complete -> deleting -> deleted
+                Notice how the status does not change to syncing. This is to
                 make sure every time this snapshot is resumed, --force will
                 be required until it is complete.
-
-        Return values (compare with module-level constants):
-            VOID : Snapshot doesn't exist on the filesystem.
-            BLANK : Directory exists and is empty.
-            SYNCING : Synchronization is in progress.
-            COMPLETE : Is safe to link-dest against.
-            DELETING : In the process of being removed from the filesystem.
-            DELETED : Snapshot is deleted and can no longer change status.
         """
         self._status_file_check()
         return self._status
 
     @if_not_dry_run
     def _status_file_check(self):
-        if self._status in (SYNCING, FLAGGED, DELETING):
+        if self._status in (Status.syncing, Status.flagged, Status.deleting):
             with open(self.statusfile) as f:
-                filestatus = int(f.read())
-                assert filestatus == self._status, _status_lookup[filestatus]
+                filestatus = Status(int(f.read()))
+                assert filestatus is self._status, _status_lookup[filestatus]
 
     @status.setter
-    def status(self, value):
+    def status(self, newstatus):
         """Setter for the status property.
 
-        The status SYNCING, FLAGGED and DELETING create a statusfile
+        The status syncing, flagged and deleting create a statusfile
         which flags this snapshot as "dirty" and not safe for link-dest.
         """
-        assert value in range(_status_count), value
-        self._logger.debug(
-            "Changing status from {} to {}.".format(
-                _status_lookup[self._status],
-                _status_lookup[value]
+        assert newstatus in Status, newstatus
+        if self._status is not None:
+            self._logger.debug(
+                "Changing status from {} to {}.".format(
+                    self._status.name,
+                    newstatus.name
+                    )
                 )
-            )
-        if self.status == DELETED and value != self.status:
+        if self.status is Status.deleted and newstatus != self.status:
             msg = "Cannot change the status of a deleted snapshot."
             raise RuntimeError(msg)
-        if self.status == FLAGGED and value == SYNCING:
-            value = FLAGGED
-        if value in (SYNCING, FLAGGED, DELETING):
-            self._create_file(self.statusfile, str(value))
+        if self.status is Status.flagged and newstatus is Status.syncing:
+            newstatus = Status.flagged
+        if newstatus in (Status.syncing, Status.flagged, Status.deleting):
+            self._create_file(self.statusfile, str(newstatus.value))
         else:
             try:
                 self._unlink(self.statusfile)
             except FileNotFoundError:
                 pass
-        self._status = value
+        self._status = newstatus
 
     @if_not_dry_run
     def _create_file(self, path, content):
@@ -303,43 +276,43 @@ class Snapshot(_logging.Logging, Lockable):
         """Infer status by analyzing snapshot directory and status file."""
         status = None
         if not os.access(self.path, os.F_OK):
-            status = VOID
+            status = Status.void
         else:
             try:
                 with open(self.statusfile) as f:
                     # This covers the SYNCING, FLAGGED and DELETING cases.
-                    status = int(f.read())
+                    status = Status(int(f.read()))
             except FileNotFoundError:
                 if os.listdir(self.path):
-                    status = COMPLETE
+                    status = Status.complete
                 else:
-                    status = BLANK
-        assert status in range(_status_count)
+                    status = Status.blank
+        assert status in Status
         self.status = status
         return status
 
     def mkdir(self):
         """Create the snapshot directory on the filesystem."""
-        if self.status != VOID:
-            msg = "status is {}, must be VOID.".format(
-                _status_lookup[self.status],
+        if self.status != Status.void:
+            msg = "status is {}, must be void.".format(
+                self.status.name,
                 )
             raise RuntimeError(msg)
         self._mkdir(self.path)
         self._logger.debug("Created directory {}.".format(self.path))
-        self.status = BLANK  # VOID -> BLANK
+        self.status = Status.blank  # void -> blank
 
     @if_not_dry_run
     def _mkdir(self, path):
         os.mkdir(self.path)
 
     def delete(self):
-        if self.status == VOID:
-            raise RuntimeError("Deleting a VOID snapshot.")
+        if self.status is Status.void:
+            raise RuntimeError("Deleting a void snapshot.")
         self._logger.info("Deleting {}.".format(self.path))
-        self.status = DELETING
+        self.status = Status.deleting
         self._rmtree(self.path)
-        self.status = DELETED
+        self.status = Status.deleted
         self._logger.info("Deletion complete.")
 
     @if_not_dry_run

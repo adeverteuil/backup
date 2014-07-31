@@ -48,7 +48,7 @@ class TestSnapshot(BasicSetup):
         s = Snapshot(self.testdest, "interval")
         s.mkdir()
         with s:
-            s.status = SYNCING
+            s.status = Status.syncing
             self.assertEqual(
                 sorted(os.listdir(self.testdest)),
                 [".interval.wip.lock", ".interval.wip.status", "interval.wip"]
@@ -144,41 +144,42 @@ class TestSnapshot(BasicSetup):
             s2.release()
 
     def test_status_cycle(self):
-        # VOID -> BLANK -> SYNCING -> COMPLETE -> DELETING -> VOID
+        # void -> blank -> syncing -> complete -> deleting -> void
         s = Snapshot(self.testdest, "interval")
-        self.assertEqual(s.status, VOID)
+        self.assertEqual(s.status, Status.void)
         s.mkdir()
-        self.assertEqual(s.status, BLANK)
-        s.status = SYNCING
-        self.assertEqual(s.status, SYNCING)
-        s.status = COMPLETE
-        self.assertEqual(s.status, COMPLETE)
-        s.status = DELETING
-        self.assertEqual(s.status, DELETING)
-        s.status = DELETED
-        # Changing the status of a DELETED snapshot should raise an exception.
-        for status in (VOID, BLANK, SYNCING, COMPLETE, DELETING):
+        self.assertEqual(s.status, Status.blank)
+        s.status = Status.syncing
+        self.assertEqual(s.status, Status.syncing)
+        s.status = Status.complete
+        self.assertEqual(s.status, Status.complete)
+        s.status = Status.deleting
+        self.assertEqual(s.status, Status.deleting)
+        s.status = Status.deleted
+        # Changing the status of a deleted snapshot should raise an exception.
+        statuses = "void blank syncing flagged complete deleting"
+        for status in (statuses.split(" ")):
             with self.assertRaises(RuntimeError):
-                s.status = status
+                s.status = Status[status]
 
-    def test_status_FLAGGED(self):
+    def test_status_flagged(self):
         s = Snapshot(self.testdest, "interval")
         s.mkdir()
-        s.status = SYNCING
-        self.assertEqual(s.status, SYNCING)
-        s.status = FLAGGED
-        self.assertEqual(s.status, FLAGGED)
-        s.status = SYNCING
-        self.assertEqual(s.status, FLAGGED)
-        s.status = DELETING
-        self.assertEqual(s.status, DELETING)
-        s.status = DELETED
-        self.assertEqual(s.status, DELETED)
+        s.status = Status.syncing
+        self.assertEqual(s.status, Status.syncing)
+        s.status = Status.flagged
+        self.assertEqual(s.status, Status.flagged)
+        s.status = Status.syncing
+        self.assertEqual(s.status, Status.flagged)
+        s.status = Status.deleting
+        self.assertEqual(s.status, Status.deleting)
+        s.status = Status.deleted
+        self.assertEqual(s.status, Status.deleted)
         with self.assertRaises(RuntimeError):
-            s.status = FLAGGED
+            s.status = Status.flagged
 
     def test_delete(self):
-        # Try to delete a VOID snapshot.
+        # Try to delete a void snapshot.
         s = Snapshot(self.testdest, "interval")
         with self.assertRaises(RuntimeError):
             with s:
@@ -192,35 +193,35 @@ class TestSnapshot(BasicSetup):
         # Snapshot should set the proper status.
 
         # Create 4 snapshot directories:
-        #   2014-07-01 -- BLANK
-        #   2014-07-02 -- SYNCING
-        #   2014-07-03 -- COMPLETE
-        #   2014-07-04 -- DELETING
+        #   2014-07-01 -- Status.blank
+        #   2014-07-02 -- Status.syncing
+        #   2014-07-03 -- Status.complete
+        #   2014-07-04 -- Status.deleting
         os.chdir(self.testdest)
         os.mkdir("daily.2014-07-04T00:00")
         os.mkdir("daily.2014-07-03T00:00")
         with open(".daily.2014-07-03T00:00.status", "w") as f:
-            f.write(str(SYNCING))
+            f.write(str(Status.syncing.value))
         os.mkdir("daily.2014-07-02T00:00")
         open("daily.2014-07-02T00:00/a", "wb").close()
         os.mkdir("daily.2014-07-01T00:00")
         with open(".daily.2014-07-01T00:00.status", "w") as f:
-            f.write(str(DELETING))
+            f.write(str(Status.deleting.value))
 
         snapshots = []
         for d in range(4):
             snapshots.append(Snapshot.from_index(self.testdest, "daily", d))
-        self.assertEqual(snapshots[0].status, BLANK)
-        self.assertEqual(snapshots[1].status, SYNCING)
-        self.assertEqual(snapshots[2].status, COMPLETE)
-        self.assertEqual(snapshots[3].status, DELETING)
+        self.assertEqual(snapshots[0].status, Status.blank)
+        self.assertEqual(snapshots[1].status, Status.syncing)
+        self.assertEqual(snapshots[2].status, Status.complete)
+        self.assertEqual(snapshots[3].status, Status.deleting)
 
     def test_dry_run(self):
         # Directory must not be created.
         s = Snapshot(self.testdest, "interval", datetime.datetime(2014, 7, 1))
         if_not_dry_run.dry_run = True
         s.mkdir()
-        s.status = SYNCING
+        s.status = Status.syncing
         self.assertEqual(os.listdir(self.testdest), [])
         # Reset
         if_not_dry_run.dry_run = False
@@ -234,7 +235,7 @@ class TestSnapshot(BasicSetup):
             ["interval.2014-07-01T00:00"],
             )
         # Reset
-        s._status = BLANK
+        s._status = Status.blank
         # Directory must not be renamed.
         s.timestamp = datetime.datetime(2014, 7, 2)
         self.assertEqual(

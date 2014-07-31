@@ -55,7 +55,7 @@ class TestCycle(BasicSetup):
         os.chdir(self.testdest)
         os.mkdir("hourly.wip")
         with open(".hourly.wip.status", "w") as f:
-            f.write(str(SYNCING))
+            f.write(str(Status.syncing.value))
         inode = os.stat("hourly.wip").st_ino
         # Setup as usual.
         cycle = Cycle(self.testdest, "hourly")
@@ -92,14 +92,14 @@ class TestCycle(BasicSetup):
         with cycle, self.assertRaises(FlaggedSnapshotError):
             cycle.create_new_snapshot(rsync)
         self.assertTrue(popenmock().kill.called)
-        self.assertEqual(cycle.snapshots[0].status, FLAGGED)
+        self.assertEqual(cycle.snapshots[0].status, Status.flagged)
 
     def test_resume_FLAGGED_snapshot(self):
         # Simulate an aborted sync.
         os.chdir(self.testdest)
         os.mkdir("hourly.wip")
         with open(".hourly.wip.status", "w") as f:
-            f.write(str(FLAGGED))
+            f.write(str(Status.flagged.value))
         # Setup as usual.
         cycle = Cycle(self.testdest, "hourly")
         config= Configuration(
@@ -123,7 +123,7 @@ class TestCycle(BasicSetup):
             )
         self.assertEqual(
             [s.status for s in cycle.snapshots],
-            [COMPLETE, BLANK]
+            [Status.complete, Status.blank]
             )
         cycle = Cycle(self.testdest, "hourly")
         self.assertEqual(cycle.snapshots, [])
@@ -220,10 +220,10 @@ class TestCycle(BasicSetup):
             open("hourly.2014-07-{:02}T00:00/file".format(d), "w").close()
         # Mark 1 snapshot dirty.
         with open(".hourly.2014-07-03T00:00.status", "w") as f:
-            f.write(str(DELETING))
+            f.write(str(Status.deleting.value))
         # Mark the most ancient snapshot dirty. It should be purged.
         with open(".hourly.2014-07-01T00:00.status", "w") as f:
-            f.write(str(DELETING))
+            f.write(str(Status.deleting.value))
         c = Cycle(self.testdest, "hourly")
         c.purge(2)
         self.assertEqual(

@@ -42,7 +42,7 @@ class FlaggedSnapshotError(Exception):
     1.  PipeLogger counts the number of bytes transferred in real
         time. When that number exceeds bw_err, it sets an event, which
         is checked by Cycle, which in turn raises FlaggedSnapshotError.
-    2.  Cycle notices that the status of the last backup is FLAGGED.
+    2.  Cycle notices that the status of the last backup is flagged.
 
     If the --force option was given on the command line, the Controller
     instance will catch the exception and suppress it.
@@ -103,9 +103,9 @@ class Cycle(Lockable, _logging.Logging):
         shutil.copystat(src, dst)
 
     def get_linkdest(self):
-        """Return the most recent COMPLETE Snapshot in its list, or None."""
+        """Return the most recent complete Snapshot in its list, or None."""
         for snapshot in self.snapshots:
-            if snapshot.status == COMPLETE and not snapshot.is_locked():
+            if snapshot.status is Status.complete and not snapshot.is_locked():
                 return snapshot
         return None
 
@@ -128,26 +128,28 @@ class Cycle(Lockable, _logging.Logging):
         complete_count = 0
         cutoff_index = 0
         for snapshot in self.snapshots:
-            if snapshot.status == COMPLETE:
+            if snapshot.status is Status.complete:
                 complete_count += 1
             cutoff_index += 1
             if complete_count >= maxnumber:
                 break
         for snapshot in self.snapshots[cutoff_index:]:
             with snapshot:
-                snapshot.status = DELETING
+                snapshot.status = Status.deleting
                 snapshot.delete()
-                snapshot.status = DELETED
+                snapshot.status = Status.deleted
         del self.snapshots[cutoff_index:]
 
     def create_new_snapshot(self, engine):
         """Use rsyncWrapper to make a new snapshot."""
-        if len(self.snapshots) > 0 and self.snapshots[0].status == FLAGGED:
+        if (len(self.snapshots) > 0 and
+            self.snapshots[0].status is Status.flagged):
             raise FlaggedSnapshotError(
                 "The last snapshot is FLAGGED; check for errors and run "
                 "backup again manually with the --force argument."
                 )
-        elif len(self.snapshots) > 0 and self.snapshots[0].status == SYNCING:
+        elif (len(self.snapshots) > 0 and
+              self.snapshots[0].status is Status.syncing):
             # Resume an aborted sync.
             snapshot = self.snapshots[0]
             msg = "Resuming snapshot {}.".format(snapshot.path)
@@ -157,7 +159,7 @@ class Cycle(Lockable, _logging.Logging):
             msg = "Creating a new snapshot at {}.".format(snapshot.path)
             with snapshot:
                 snapshot.mkdir()
-                snapshot.status = SYNCING
+                snapshot.status = Status.syncing
         self._logger.info(msg)
         with snapshot:
             # Get a clean snapshot to hardlink unchanged files to.
@@ -187,7 +189,7 @@ class Cycle(Lockable, _logging.Logging):
                                     "rsync had time to finish anyways."
                                     )
                             finally:
-                                snapshot.status = FLAGGED
+                                snapshot.status = Status.flagged
                                 raise FlaggedSnapshotError(
                                     "Bandwidth safety kill switch triggered."
                                     )
@@ -208,7 +210,7 @@ class Cycle(Lockable, _logging.Logging):
                 engine.close_pipes()
                 if linkdest is not None:
                     linkdest.release()
-            snapshot.status = COMPLETE
+            snapshot.status = Status.complete
             snapshot.timestamp = datetime.datetime.now()
 
     def archive_from(self, cycle):
@@ -246,7 +248,7 @@ class Cycle(Lockable, _logging.Logging):
         self.snapshots.insert(0, snapshot)
         with snapshot, origin:
             snapshot.mkdir()
-            snapshot.status = SYNCING
+            snapshot.status = Status.syncing
             self._cp_la(origin.path, snapshot.path)
-            snapshot.status = COMPLETE
+            snapshot.status = Status.complete
             snapshot.timestamp = origin.timestamp
