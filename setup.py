@@ -33,8 +33,8 @@ setup(
     entry_points={
         'console_scripts': ["backup=backup.controller:main"],
         },
-    data_files=[
-        ('/etc', ['config/backup.conf']),
-        ('/etc/backup.d', ['config/example.exclude']),
-        ],
+    #data_files=[
+    #    ('/etc', ['config/backup']),
+    #    ('/etc/backup.d', ['config/example.exclude']),
+    #    ],
     )
