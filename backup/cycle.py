@@ -28,27 +28,12 @@ import os.path
 import stat
 import subprocess
 
+from . import *
 from . import _logging
+from .controller import RSYNC_E_CODES
 from .dry_run import if_not_dry_run
 from .locking import Lockable
 from .snapshot import *
-
-
-class FlaggedSnapshotError(Exception):
-
-    """This exception halts a backup to prevent excessive bandwidth usage.
-
-    This exception is raise on two occasions:
-    1.  PipeLogger counts the number of bytes transferred in real
-        time. When that number exceeds bw_err, it sets an event, which
-        is checked by Cycle, which in turn raises FlaggedSnapshotError.
-    2.  Cycle notices that the status of the last backup is flagged.
-
-    If the --force option was given on the command line, the Controller
-    instance will catch the exception and suppress it.
-    """
-
-    pass
 
 
 class Cycle(Lockable, _logging.Logging):
@@ -195,7 +180,10 @@ class Cycle(Lockable, _logging.Logging):
                                     )
                 if returncode > 0:
                     raise RuntimeError(
-                        "Engine returned {}.".format(returncode)
+                        "Engine returned {} ({}).".format(
+                            returncode,
+                            RSYNC_E_CODES[returncode],
+                            )
                         )
             except KeyboardInterrupt:
                 try:

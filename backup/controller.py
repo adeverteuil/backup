@@ -21,11 +21,13 @@
 import datetime
 import logging
 import os.path
+import subprocess
 import traceback
 
+from . import *
 from . import _logging
 from .config import *
-from .cycle import Cycle, FlaggedSnapshotError
+from .cycle import Cycle
 from .dry_run import if_not_dry_run
 from .engine import rsyncWrapper
 
@@ -45,7 +47,7 @@ class Controller(_logging.Logging):
 
     def run(self):
         try:
-            self._sanity_checks()
+            self._general_sanity_checks()
         except:
             self._log_exception(*sys.exc_info())
             return 1
@@ -62,6 +64,8 @@ class Controller(_logging.Logging):
             except FlaggedSnapshotError:
                 if not self.config['default'].getboolean('force'):
                     raise
+            except ResourceUnavailableException as err:
+                self._logger.warning(err.args[0])
             except Exception:
                 errors = 1
                 self._log_exception(*sys.exc_info())
@@ -98,6 +102,7 @@ class Controller(_logging.Logging):
         dailies = int(thisconfig['dailies'])
         self._prepare_logfile(dest)
         self._logger.info("Processing {}.".format(host))
+        self._host_sanity_checks(host)
         if hourlies > 0:
             self._logger.info("Starting hourly backup")
             cycle = Cycle(dest, "hourly")
@@ -181,7 +186,7 @@ class Controller(_logging.Logging):
             handler.release()
         del _logging.handlers['file']
 
-    def _sanity_checks(self):
+    def _general_sanity_checks(self):
         config = self.config
         if not config.sections():
             raise ValueError(
@@ -204,8 +209,26 @@ class Controller(_logging.Logging):
                         config.defaults()['configfile'],
                         )
                     )
-            #TODO:
-            # - Check that /dest/host directory exists and is writeable.
-            # - If it is a mountpoint, check that it is mounted.
-            # - If it is a remote backup, check for SSH_AGENT_PID and
-            #    SSH_AUTH_SOCK environment variables?
+
+    def _host_sanity_checks(self, host):
+        config = self.config[host]
+        if config['sourcehost'] != DEFAULTS['sourcehost']:
+            returncode = subprocess.call(
+                [
+                    config['ssh'],
+                    "-o", "BatchMode=yes",
+                    config['sourcehost'],
+                    "exit", "0",
+                    ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                )
+            if returncode > 0:
+                raise ResourceUnavailableException(
+                    "Unable to connect to {}; ssh returned {}".format(
+                        host,
+                        returncode,
+                        )
+                    )
+            else:
+                self._logger.debug("Connection to host is a success.")

@@ -34,6 +34,7 @@ import time
 import threading
 
 from . import _logging
+from .config import DEFAULTS
 
 
 class rsyncWrapper(_logging.Logging):
@@ -88,7 +89,7 @@ class rsyncWrapper(_logging.Logging):
             args.append("--exclude-from={}".format(excludefile))
         # Append source directories.
         sourcedirs = options['sourcedirs'].split(":")
-        if 'sourcehost' in options:
+        if options['sourcehost'] != DEFAULTS['sourcehost']:
             args.append("--rsh=ssh -o BatchMode=yes")
             # Transform this:  ["dir1", "dir2", "dir3"]
             # into this: ["sourcehost:dir1", ":dir2", ":dir3"]

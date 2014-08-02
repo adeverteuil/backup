@@ -77,6 +77,8 @@ def step_impl(context, key, section, value):
     config = configparser.ConfigParser()
     with open(context.configfile) as f:
         config.read_file(f, context.configfile)
+    if section not in config.sections():
+        config.add_section(section)
     config[section][key] = value
     with open(context.configfile, "w") as f:
         config.write(f)

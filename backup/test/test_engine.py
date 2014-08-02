@@ -32,6 +32,7 @@ class TestEngine(BasicSetup):
         self.minimal_options = configparser.ConfigParser(
             defaults={
                 'rsync': "/usr/bin/rsync",
+                'sourcehost': "localhost",
                 'sourcedirs': self.testsource,
                 'dest': self.testdest,
                 'dry-run': "False",

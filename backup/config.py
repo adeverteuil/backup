@@ -69,6 +69,8 @@ DEFAULTS = {
     'configfile': "/etc/backup",
     'configdir': "/etc/backup.d",
     'rsync': "/usr/bin/rsync",
+    'ssh': "/usr/bin/ssh",
+    'sourcehost': "localhost",
     'sourcedirs': _make_sources_list(),
     'dest': "/root/var/backups",
     'hourlies': "24",
