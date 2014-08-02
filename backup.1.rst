@@ -32,6 +32,10 @@ OPTIONS
 --verbose, -v   Set verbosity level to INFO. This option may be repeated
                 once for verbosity level DEBUG. The default level is
                 WARNING.
+--print-rsync, -p
+                Also print the output of rsync to stdout. Otherwise,
+                only log its output to the log file. Ineffective if -v was
+                not given.
 --configfile CONFIGFILE, -c CONFIGFILE
                 Use this file rather than the default.
 --configdir CONFIGDIR, -d CONFIGDIR

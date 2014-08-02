@@ -153,7 +153,7 @@ class Controller(_logging.Logging):
         handler.setLevel(logging.DEBUG)
         _logging.handlers['memory'].setTarget(handler)
         _logging.handlers['memory'].flush()
-        logging.getLogger().addHandler(handler)
+        logging.getLogger("rsync").addHandler(handler)
         _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(logfile))
 
@@ -178,7 +178,7 @@ class Controller(_logging.Logging):
     def _close_file_logger(self):
         self._logger.debug("Closing log file.")
         handler = _logging.handlers['file']
-        logging.getLogger().removeHandler(handler)
+        logging.getLogger("rsync").removeHandler(handler)
         handler.acquire()
         try:
             handler.close()

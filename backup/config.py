@@ -121,6 +121,12 @@ class Configuration(_logging.Logging):
             help=("Set verbosity to INFO. This option may be repeated once for"
                   " verbosity level DEBUG."),
             )
+        parser.add_argument("--print-rsync", "-p",
+            help=("Also print the output of rsync to stdout. Otherwise, only "
+                  "log its output to the log file. Ineffective if -v option "
+                  "is not given."),
+            action="store_true",
+            )
         parser.add_argument("--configfile", "-c",
             help="Use this file rather than the default.",
             )
@@ -218,6 +224,10 @@ class Configuration(_logging.Logging):
                 lvl = "INFO"
         logger.addHandler(_logging.handlers['memory'])
         self._logger.debug("Log level set to {}".format(lvl))
+        if self.args.print_rsync is False:
+            # The logging FileHandler will be added to the "rsync" logger
+            # by the Controller object.
+            logging.getLogger("rsync").propagate = False
 
     def _read_config(self):
         """Finds and reads the config files. Uses the --configfile option."""
