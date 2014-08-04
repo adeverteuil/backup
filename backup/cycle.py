@@ -125,16 +125,26 @@ class Cycle(Lockable, _logging.Logging):
                 snapshot.status = Status.deleted
         del self.snapshots[cutoff_index:]
 
-    def create_new_snapshot(self, engine):
-        """Use rsyncWrapper to make a new snapshot."""
+    def create_new_snapshot(self, engine, force=False):
+        """Use rsyncWrapper to make a new snapshot.
+
+        engine -- rsyncWrapper instance
+        force -- Ignore flagged status
+        """
         if (len(self.snapshots) > 0 and
-            self.snapshots[0].status is Status.flagged):
+            self.snapshots[0].status is Status.flagged and
+            not force):
             raise FlaggedSnapshotError(
                 "The last snapshot is FLAGGED; check for errors and run "
                 "backup again manually with the --force argument."
                 )
-        elif (len(self.snapshots) > 0 and
-              self.snapshots[0].status is Status.syncing):
+        elif (
+            len(self.snapshots) > 0 and
+            (
+                self.snapshots[0].status is Status.syncing or
+                self.snapshots[0].status is Status.flagged
+                )
+            ):
             # Resume an aborted sync.
             snapshot = self.snapshots[0]
             msg = "Resuming snapshot {}.".format(snapshot.path)
@@ -164,7 +174,7 @@ class Cycle(Lockable, _logging.Logging):
                     else:
                         break  # Subprocess exited.
                     finally:
-                        if engine.kill_switch_event.is_set():
+                        if engine.kill_switch_event.is_set() and not force:
                             # PipeLogger instance logged an error.
                             try:
                                 engine.process.kill()

@@ -5,8 +5,9 @@ Feature: Prevent excess bandwidth usage in case of a bug
 
     Scenario: A backup triggers the kill switch
         Given the value of bw_err in section test_host_2 is 10
-        When I invoke backup with the arguments "-vv"
+        When I invoke backup without parameters
         Then the program should exit 1
+        And I should see "Exiting with errors from test_host_2."
 
     Scenario: Manual override
         Given the value of bw_err in section test_host_2 is 10

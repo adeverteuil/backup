@@ -57,17 +57,14 @@ class Controller(_logging.Logging):
         logging.getLogger().removeHandler(_logging.handlers['memory'])
         hosts = self.config.defaults()['hosts'].split(" ")
         self._logger.info("Hosts to back up: {}".format(", ".join(hosts)))
-        errors = 0
+        errors = []
         for host in hosts:
             try:
                 self._run_host(host)
-            except FlaggedSnapshotError:
-                if not self.config['default'].getboolean('force'):
-                    raise
             except ResourceUnavailableException as err:
                 self._logger.warning(err.args[0])
             except Exception:
-                errors = 1
+                errors.append(host)
                 self._log_exception(*sys.exc_info())
                 # In a normal situation, _move_log_file() is called and this
                 # method in turn calls _close_file_logger(). However, if an
@@ -75,14 +72,16 @@ class Controller(_logging.Logging):
                 # handler before we move on to another host.
                 self._close_file_logger()
             except KeyboardInterrupt:
-                errors = 1
+                errors.append(host)
                 self._logger.error("Keyboard interrupt.")
                 break
         if errors:
-            self._logger.error("Exiting with errors.")
+            self._logger.error(
+                "Exiting with errors from {}.".format(", ".join(errors))
+                )
         else:
             self._logger.info("Exiting normally.")
-        return errors  # 0 or 1.
+        return 1 if errors else 0
 
     def _log_exception(self, errtype, errval, tb):
         self._logger.error(
@@ -107,7 +106,7 @@ class Controller(_logging.Logging):
             self._logger.info("Starting hourly backup")
             cycle = Cycle(dest, "hourly")
             rsync = rsyncWrapper(thisconfig)
-            cycle.create_new_snapshot(rsync)
+            cycle.create_new_snapshot(rsync, thisconfig.getboolean('force'))
             cycle.purge(hourlies)
             self._logger.info("Finished hourly backup")
             self._move_logfile(cycle.snapshots[0].path)
@@ -133,7 +132,10 @@ class Controller(_logging.Logging):
                     # Create dailies with rsync.
                     self._logger.info("Starting daily backup")
                     rsync = rsyncWrapper(thisconfig)
-                    cycle.create_new_snapshot(rsync)
+                    cycle.create_new_snapshot(
+                        rsync,
+                        thisconfig.getboolean('force'),
+                        )
                     self._logger.info("Finished daily backup")
                     self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
