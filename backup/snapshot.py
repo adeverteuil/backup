@@ -133,7 +133,7 @@ class Snapshot(_logging.Logging, Lockable):
     def __init__(self, dir, interval, timestamp=None, **kwargs):
         super().__init__(**kwargs)
         self.dir = dir
-        self.interval = interval
+        self._interval = interval
         self._status = None
         if isinstance(timestamp, str):
             timestamp = datetime.datetime.strptime(timestamp, self._timeformat)
@@ -183,6 +183,30 @@ class Snapshot(_logging.Logging, Lockable):
         oldlock = self.lockfile
         oldstatus = self.statusfile
         self._timestamp = value
+        newpath = self.path
+        newlock = self.lockfile
+        newstatus = self.statusfile
+        if os.access(oldlock, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldlock, newlock))
+            self._rename(oldlock, newlock)
+        if os.access(oldpath, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldpath, newpath))
+            self._rename(oldpath, newpath)
+        if os.access(oldstatus, os.F_OK):
+            self._logger.debug("Moving {} to {}.".format(oldstatus, newstatus))
+            self._rename(oldstatus, newstatus)
+        self._logger.debug("timestamp set to {}.".format(self.stimestamp))
+
+    @property
+    def interval(self):
+        return self._interval
+
+    @interval.setter
+    def interval(self, value):
+        oldpath = self.path
+        oldlock = self.lockfile
+        oldstatus = self.statusfile
+        self._interval = value
         newpath = self.path
         newlock = self.lockfile
         newstatus = self.statusfile

@@ -95,6 +95,7 @@ class Controller(_logging.Logging):
             )
 
     def _run_host(self, host):
+        # TODO use the Cycle().overflow_cycle attribute.
         thisconfig = self.config[host]
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])

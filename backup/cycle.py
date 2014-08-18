@@ -36,6 +36,14 @@ from .locking import Lockable
 from .snapshot import *
 
 
+TIMEDELTA = {
+    'hourly': datetime.timedelta(hours=1),
+    'daily': datetime.timedelta(days=1),
+    'weekly': datetime.timedelta(days=7),
+    }
+DEFAULT_TIMEDELTA = TIMEDELTA['hourly']
+
+
 class Cycle(Lockable, _logging.Logging):
 
     """Manages a group of Snapshots of the same interval."""
@@ -44,10 +52,12 @@ class Cycle(Lockable, _logging.Logging):
         super().__init__(**kwargs)
         self.dir = dir
         self.interval = interval
+        self.timedelta = TIMEDELTA.get(interval, DEFAULT_TIMEDELTA)
         self.snapshots = []
         self._build_snapshots_list()
         self.path = os.path.join(dir)
         self.lockfile = os.path.join(dir, "."+interval+".lock")
+        self.overflow_cycle = None
 
     def _build_snapshots_list(self):
         self._logger.debug("Building {} snapshots list.".format(self.interval))
@@ -107,6 +117,20 @@ class Cycle(Lockable, _logging.Logging):
 
         Parameters:
             maxnumber -- An int, the number of snapshots to keep.
+
+        If the overflow_cycle attribute is not None, it must be a tuple
+        of one Cycle instance and one integer. The Cycle instance's feed()
+        method will be called with a list of snapshot overflowed from this
+        purge. Then, its purge() method will be called with the integer
+        as its maxnumber parameter.
+
+        For example, if:
+            overflow_cycle = (Cycle("dir", "daily"), 4)
+        …then these calls will happen:
+            # Possibly keep one or more snapshots and change their cycle name
+            # and delete the unneeded snapshots.
+            overflow_cycle[0].feed(snapshots)
+            overflow_cycle[0].purge(overflow_cycle[1])
         """
         # Iterate over the snapshots list until we count maxnumber complete
         # backups. Delete snapshots beyond that index.
@@ -118,12 +142,45 @@ class Cycle(Lockable, _logging.Logging):
             cutoff_index += 1
             if complete_count >= maxnumber:
                 break
-        for snapshot in self.snapshots[cutoff_index:]:
+        if self.overflow_cycle is not None:
+            self.overflow_cycle[0].feed(self.snapshots[cutoff_index:])
+            self.overflow_cycle[0].purge(self.overflow_cycle[1])
+        else:
+            for snapshot in self.snapshots[cutoff_index:]:
+                with snapshot:
+                    snapshot.status = Status.deleting
+                    snapshot.delete()
+                    snapshot.status = Status.deleted
+        del self.snapshots[cutoff_index:]
+
+    def feed(self, snapshots):
+        """Assimilate snapshots purged from another Cycle instance."""
+        # Keep snapshots that are at least timedelta appart.
+        inserted = 1
+        while inserted == 1:
+            inserted = 0
+            for snapshot in reversed(snapshots):  # Iterate from old to recent.
+                #last_snapshot_time = self.snapshots[0].timestamp
+                #this_snapshot_time = snapshot.timestamp
+                #difference = this_snapshot_time - last_snapshot_time
+                if (snapshot.status is Status.complete and
+                    len(self.snapshots) == 0 or
+                    (
+                     snapshot.timestamp - self.snapshots[0].timestamp >=
+                     self.timedelta
+                     )
+                    ):
+                    with snapshot:
+                        snapshot.interval = self.interval
+                        self.snapshots.insert(0, snapshot)
+                        snapshots.remove(snapshot)
+                    inserted = 1
+                    break
+        for snapshot in snapshots:
             with snapshot:
                 snapshot.status = Status.deleting
                 snapshot.delete()
                 snapshot.status = Status.deleted
-        del self.snapshots[cutoff_index:]
 
     def create_new_snapshot(self, engine, force=False):
         """Use rsyncWrapper to make a new snapshot.
@@ -213,6 +270,8 @@ class Cycle(Lockable, _logging.Logging):
 
     def archive_from(self, cycle):
         """Copy a snapshot from another cycle.
+
+        Deprecated. Use feed().
 
         This method copies the most recent complete snapshot from cycle into
         itself. It copies the directory hierarchy while hard-linking all files.
