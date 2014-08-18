@@ -4,4 +4,6 @@ EnvironmentFile=-/tmp/agent-info
 
 [Service]
 Type=oneshot
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
 ExecStart=/usr/bin/backup
