@@ -154,9 +154,9 @@ class Controller(_logging.Logging):
         run_time = time.monotonic() - start_time
         self._logger.info(
             "Run time for {}: {} minutes, {} seconds.".format(
+                host,
                 int(run_time / 60),
                 int(run_time % 60),
-                host,
                 )
             )
 
