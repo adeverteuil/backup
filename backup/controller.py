@@ -31,6 +31,7 @@ from .config import *
 from .cycle import Cycle
 from .dry_run import if_not_dry_run
 from .engine import rsyncWrapper
+from .version import __version__
 
 
 def main():
@@ -47,6 +48,7 @@ class Controller(_logging.Logging):
         self.config = config
 
     def run(self):
+        self._logger.info("{} {}".format(sys.argv[0], __version__))
         start_time = time.monotonic()
         try:
             self._general_sanity_checks()
