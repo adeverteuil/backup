@@ -22,6 +22,7 @@ import datetime
 import logging
 import os.path
 import subprocess
+import time
 import traceback
 
 from . import *
@@ -46,6 +47,7 @@ class Controller(_logging.Logging):
         self.config = config
 
     def run(self):
+        start_time = time.monotonic()
         try:
             self._general_sanity_checks()
         except:
@@ -75,6 +77,13 @@ class Controller(_logging.Logging):
                 errors.append(host)
                 self._logger.error("Keyboard interrupt.")
                 break
+        run_time = time.monotonic() - start_time
+        self._logger.info(
+            "Total run time: {} minutes, {} seconds.".format(
+                int(run_time / 60),
+                int(run_time % 60),
+                )
+            )
         if errors:
             self._logger.error(
                 "Exiting with errors from {}.".format(", ".join(errors))
@@ -95,6 +104,7 @@ class Controller(_logging.Logging):
             )
 
     def _run_host(self, host):
+        start_time = time.monotonic()
         thisconfig = self.config[host]
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])
@@ -139,6 +149,14 @@ class Controller(_logging.Logging):
                     self._logger.info("Finished daily backup")
                     self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
+        run_time = time.monotonic() - start_time
+        self._logger.info(
+            "Run time for {}: {} minutes, {} seconds.".format(
+                int(run_time / 60),
+                int(run_time % 60),
+                host,
+                )
+            )
 
     @if_not_dry_run
     def _prepare_logfile(self, path):
