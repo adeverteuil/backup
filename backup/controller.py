@@ -235,13 +235,15 @@ class Controller(_logging.Logging):
     def _host_sanity_checks(self, host):
         config = self.config[host]
         if config['sourcehost'] != DEFAULTS['sourcehost']:
+            cmd = [
+                config['ssh'],
+                "-o", "BatchMode=yes",
+                config['sourcehost'],
+                "exit", "0",
+                ],
+            self._logger.debug("Calling {}".format(" ".join(cmd)))
             returncode = subprocess.call(
-                [
-                    config['ssh'],
-                    "-o", "BatchMode=yes",
-                    config['sourcehost'],
-                    "exit", "0",
-                    ],
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 )
