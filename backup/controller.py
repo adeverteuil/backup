@@ -170,11 +170,11 @@ class Controller(_logging.Logging):
         """
         logfile = os.path.join(path, "backup.log")
         handler = logging.FileHandler(logfile)
-        handler.logfile = logfile  # For use in _move_logfile method.
         handler.setFormatter(_logging.formatters['file'])
         handler.setLevel(logging.DEBUG)
         _logging.handlers['memory'].setTarget(handler)
         _logging.handlers['memory'].flush()
+        _logging.handlers['memory'].setTarget(None)
         logging.getLogger("rsync").addHandler(handler)
         _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(logfile))
@@ -191,10 +191,12 @@ class Controller(_logging.Logging):
         self._logger.debug("Moving log file to {}.".format(path))
         handler = _logging.handlers['file']
         self._close_file_logger()
+        newfile = os.path.join(path, "backup.log")
         os.rename(
-            handler.logfile,  # Set by me in _prepare_logfile.
-            os.path.join(path, "backup.log"),
+            handler.baseFilename,  # TODO: subclass rather than hack internals.
+            newfile,
             )
+        handler.baseFilename = newfile
 
     @if_not_dry_run
     def _close_file_logger(self):
