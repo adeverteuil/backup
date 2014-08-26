@@ -43,6 +43,7 @@ import io
 import logging
 import os
 import os.path
+import pprint
 import sys
 
 from . import _logging
@@ -173,12 +174,8 @@ class Configuration(_logging.Logging):
             "Hosts defined: {}".format(self.config.sections())
             )
         for host in self.config.sections():
-            self._logger.debug(
-                "{}: {}".format(
-                    host,
-                    {k: v for k, v in self.config[host].items()},
-                    )
-                )
+            msg = pprint.pformat({k: v for k, v in self.config[host].items()})
+            self._logger.debug("Configuration for {}:\n{}".format(host, msg))
         return self.config
 
     def _parse_environ(self):
