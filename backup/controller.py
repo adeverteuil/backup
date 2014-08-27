@@ -242,7 +242,7 @@ class Controller(_logging.Logging):
                 "-o", "BatchMode=yes",
                 config['sourcehost'],
                 "exit", "0",
-                ],
+                ]
             self._logger.debug("Calling {}".format(" ".join(cmd)))
             returncode = subprocess.call(
                 cmd,
