@@ -70,3 +70,30 @@ class TestConfiguration(BasicSetup):
         logger.info("line 2")
         with open(file_b) as f:
             self.assertEqual(f.read(), "info\nline 2\n")
+
+    def test_init_MovableFileHandler(self):
+        h = MovableFileHandler("foo")
+        h.close()
+
+    def test_move_MovableFileHandler(self):
+        # Preparation
+        file1 = os.path.join(self.testdest, "file1")
+        file2 = os.path.join(self.testdest, "file2")
+        logger = logging.getLogger("test")
+        logger.propagate = False
+        h = MovableFileHandler(file1)
+        logger.addHandler(h)
+        # Pre-test
+        logger.warning("line 1")
+        self.assertEqual(os.listdir(self.testdest), ["file1"])
+        with open(file1) as f:
+            self.assertEqual(f.read(), "line 1\n")
+        # Now the actual test
+        h.move_to(file2)
+        logger.warning("line 2")
+        self.assertEqual(os.listdir(self.testdest), ["file2"])
+        with open(file2) as f:
+            self.assertEqual(f.read(), "line 1\nline 2\n")
+        # Cleanup
+        logger.removeHandler(h)
+        h.close()

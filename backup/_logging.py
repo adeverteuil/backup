@@ -41,8 +41,24 @@ There are also the following module level functions:
 import io
 import logging
 import logging.handlers
+import os.path
 import shutil
 import sys
+
+
+class Logging:
+
+    """Subclass for any class that could use a _logger attribute."""
+
+    def __init__(self, *args, **kwargs):
+        """Define a _logger attribute in a uniform way across the program."""
+        super().__init__(*args, **kwargs)
+        # The name of the logger is the qualified name of the superclass.
+        # For example, if the C class in the m.s module subclasses Logging,
+        # Its _logger will be called "m.s.C".
+        self._logger = logging.getLogger(
+            self.__module__+"."+self.__class__.__name__
+            )
 
 
 class ManualFlushMemoryHandler(logging.handlers.MemoryHandler):
@@ -74,6 +90,27 @@ class ManualFlushMemoryHandler(logging.handlers.MemoryHandler):
         super().close()
 
 
+class MovableFileHandler(logging.FileHandler):
+
+    """A FileHandler with a move_to() method."""
+
+    def move_to(self, path):
+        """Move the log file to the specified directory."""
+        self.acquire()
+        path = os.path.abspath(path)
+        try:
+            self.close()
+            shutil.move(
+                self.baseFilename,
+                path,
+                )
+            self.baseFilename = path
+            # The new file will be automatically opened when a method to
+            # handle a record is called.
+        finally:
+            self.release()
+
+
 formatters = {
     'stream': logging.Formatter("%(name)s %(levelname)s: %(message)s"),
     'file': logging.Formatter(
@@ -94,47 +131,3 @@ handlers['stream'].setFormatter(formatters['stream'])
 handlers['stream'].setLevel(logging.WARNING)
 handlers['memory'].setFormatter(formatters['file'])
 handlers['memory'].setLevel(logging.DEBUG)
-
-
-def add_file_handler(filename):
-    """Adds a FileHandler to the root logger.
-
-    The file name for logging is only known at runtime.
-    This function is called after the configuration of backup has been parsed.
-    """
-    logger = logging.getLogger()
-    _handlers['file'] = logging.FileHandler(filename)
-    _handlers['file'].setFormatter(_formatters['file'])
-    logger.addHandler(_handlers['file'])
-
-
-def move_log_file(dest):
-    """Moves the log file to a new location.
-
-    Closes the file handler, then changes its location according to dest.
-    """
-    h = _handlers['file']
-    h.acquire()
-    try:
-        h.close()
-        shutil.move(h.baseFilename, dest)
-        h.baseFilename = dest
-        # The new file will be automatically opened when a method to
-        # handle a record is called.
-    finally:
-        h.release()
-
-
-class Logging:
-
-    """Subclass for any class that could use a _logger attribute."""
-
-    def __init__(self, *args, **kwargs):
-        """Define a _logger attribute in a uniform way across the program."""
-        super().__init__(*args, **kwargs)
-        # The name of the logger is the qualified name of the superclass.
-        # For example, if the C class in the m.s module subclasses Logging,
-        # Its _logger will be called "m.s.C".
-        self._logger = logging.getLogger(
-            self.__module__+"."+self.__class__.__name__
-            )

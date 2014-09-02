@@ -21,6 +21,7 @@
 import datetime
 import logging
 import os.path
+import pprint
 import subprocess
 import time
 import traceback
@@ -70,11 +71,7 @@ class Controller(_logging.Logging):
             except Exception:
                 errors.append(host)
                 self._log_exception(*sys.exc_info())
-                # In a normal situation, _move_log_file() is called and this
-                # method in turn calls _close_file_logger(). However, if an
-                # exception occurs during a backup, we want to close the file
-                # handler before we move on to another host.
-                self._close_file_logger()
+                self._close_logfile()
             except KeyboardInterrupt:
                 errors.append(host)
                 self._logger.error("Keyboard interrupt.")
@@ -111,8 +108,13 @@ class Controller(_logging.Logging):
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])
         dailies = int(thisconfig['dailies'])
-        self._prepare_logfile(dest)
+        self._open_logfile(dest)
         self._logger.info("Processing {}.".format(host))
+        self._logger.debug(
+            "Configuration for {}:\n{}".format(
+                host, pprint.pformat(vars(thisconfig))
+                )
+            )
         self._host_sanity_checks(host)
         if hourlies > 0:
             self._logger.info("Starting hourly backup")
@@ -159,17 +161,18 @@ class Controller(_logging.Logging):
                 int(run_time % 60),
                 )
             )
+        self._close_logfile()
 
     @if_not_dry_run
-    def _prepare_logfile(self, path):
-        """Create a log file handler and add it to the root logger.
+    def _open_logfile(self, path):
+        """Create a log file handler and add it to the "rsync" logger.
 
         All the logging done so far was buffered. Just after the handler is
         created and before any further logging, we flush (actually, copy) the
         buffered records to the file handler.
         """
         logfile = os.path.join(path, "backup.log")
-        handler = logging.FileHandler(logfile)
+        handler = _logging.MovableFileHandler(logfile)
         handler.setFormatter(_logging.formatters['file'])
         handler.setLevel(logging.DEBUG)
         _logging.handlers['memory'].setTarget(handler)
@@ -188,18 +191,14 @@ class Controller(_logging.Logging):
         called to close the file handler, and move the file to the snapshot
         directory.
         """
+        path = os.path.join(path, "backup.log")
         self._logger.debug("Moving log file to {}.".format(path))
         handler = _logging.handlers['file']
-        self._close_file_logger()
-        newfile = os.path.join(path, "backup.log")
-        os.rename(
-            handler.baseFilename,  # TODO: subclass rather than hack internals.
-            newfile,
-            )
-        handler.baseFilename = newfile
+        handler.move_to(path)
 
     @if_not_dry_run
-    def _close_file_logger(self):
+    def _close_logfile(self):
+        """Close the log file, remove the handler from the "rsync" logger."""
         self._logger.debug("Closing log file.")
         handler = _logging.handlers['file']
         logging.getLogger("rsync").removeHandler(handler)
@@ -211,6 +210,7 @@ class Controller(_logging.Logging):
         del _logging.handlers['file']
 
     def _general_sanity_checks(self):
+        """Sanity checks applicable to the whole application."""
         config = self.config
         if not config.sections():
             raise ValueError(
@@ -235,6 +235,7 @@ class Controller(_logging.Logging):
                     )
 
     def _host_sanity_checks(self, host):
+        """Sanity checks specific to each host."""
         config = self.config[host]
         if config['sourcehost'] != DEFAULTS['sourcehost']:
             cmd = [
