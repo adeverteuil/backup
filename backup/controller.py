@@ -108,6 +108,8 @@ class Controller(_logging.Logging):
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])
         dailies = int(thisconfig['dailies'])
+        # Do checks before anything tries to touch the filesystem.
+        self._host_sanity_checks(host)
         self._open_logfile(dest)
         self._logger.info("Processing {}.".format(host))
         self._logger.debug(
@@ -115,7 +117,6 @@ class Controller(_logging.Logging):
                 host, pprint.pformat(vars(thisconfig))
                 )
             )
-        self._host_sanity_checks(host)
         if hourlies > 0:
             self._logger.info("Starting hourly backup")
             cycle = Cycle(dest, "hourly")
@@ -200,8 +201,11 @@ class Controller(_logging.Logging):
     @if_not_dry_run
     def _close_logfile(self):
         """Close the log file, remove the handler from the "rsync" logger."""
+        try:
+            handler = _logging.handlers['file']
+        except KeyError:
+            return
         self._logger.debug("Closing log file.")
-        handler = _logging.handlers['file']
         logging.getLogger().removeHandler(handler)
         logging.getLogger("rsync").removeHandler(handler)
         handler.acquire()
@@ -239,6 +243,11 @@ class Controller(_logging.Logging):
     def _host_sanity_checks(self, host):
         """Sanity checks specific to each host."""
         config = self.config[host]
+        if not os.access(config['dest'], os.F_OK):
+            raise FileNotFoundError(
+                "{} does not exist.".format(config['dest'])
+                )
+        self._mkhostdir(config['dest'], host)
         if config['sourcehost'] != DEFAULTS['sourcehost']:
             cmd = [
                 config['ssh'],
@@ -261,3 +270,18 @@ class Controller(_logging.Logging):
                     )
             else:
                 self._logger.debug("Connection to host is a success.")
+
+    @if_not_dry_run
+    def _mkhostdir(self, dest, host):
+        """
+        This part of _host_sanity_checks is done separately because we
+        want to avoid raising PermissionError on dry-runs.
+        """
+        if not os.access(dest, os.R_OK|os.W_OK):
+            raise PermissionError(
+                "Insufficient read/write permissions on {}.".format(dest)
+                )
+        hostdir = os.path.join(dest, host)
+        if not os.access(hostdir, os.F_OK):
+            self._logger.info("Creating directory {}.".format(hostdir))
+            os.mkdir(hostdir)

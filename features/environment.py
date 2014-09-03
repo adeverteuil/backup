@@ -56,8 +56,10 @@ def before_scenario(context, scenario):
 def after_scenario(context, scenario):
     if "notempfile" in scenario.tags:
         return
-    shutil.rmtree(context.testsource)
-    shutil.rmtree(context.testdest)
+    if os.access(context.testsource, os.F_OK):
+        shutil.rmtree(context.testsource)
+    if os.access(context.testdest, os.F_OK):
+        shutil.rmtree(context.testdest)
     os.remove(context.configfile)
 
 def after_step(context, step):
