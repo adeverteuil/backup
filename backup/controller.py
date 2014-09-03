@@ -178,7 +178,8 @@ class Controller(_logging.Logging):
         _logging.handlers['memory'].setTarget(handler)
         _logging.handlers['memory'].flush()
         _logging.handlers['memory'].setTarget(None)
-        logging.getLogger("rsync").addHandler(handler)
+        logging.getLogger().addHandler(handler)
+        logging.getLogger("rsync").addHandler(handler)  # Does not propagate.
         _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(logfile))
 
@@ -201,6 +202,7 @@ class Controller(_logging.Logging):
         """Close the log file, remove the handler from the "rsync" logger."""
         self._logger.debug("Closing log file.")
         handler = _logging.handlers['file']
+        logging.getLogger().removeHandler(handler)
         logging.getLogger("rsync").removeHandler(handler)
         handler.acquire()
         try:

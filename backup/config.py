@@ -217,10 +217,11 @@ class Configuration(_logging.Logging):
                 lvl = "INFO"
         logger.addHandler(_logging.handlers['memory'])
         self._logger.debug("Log level set to {}".format(lvl))
-        if self.args.print_rsync is False:
-            # The logging FileHandler will be added to the "rsync" logger
-            # by the Controller object.
-            logging.getLogger("rsync").propagate = False
+        logging.getLogger("rsync").propagate = False
+        if self.args.print_rsync:
+            logging.getLogger("rsync").addHandler(_logging.handlers['stream'])
+        # The logging FileHandler will be added to the "rsync" logger by
+        # the Controller object so the output will be recorded in any case.
 
     def _read_config(self):
         """Finds and reads the config files. Uses the --configfile option."""
