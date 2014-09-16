@@ -114,7 +114,7 @@ class Controller(_logging.Logging):
         self._logger.info("Processing {}.".format(host))
         self._logger.debug(
             "Configuration for {}:\n{}".format(
-                host, pprint.pformat(vars(thisconfig))
+                host, pprint.pformat(dict(thisconfig))
                 )
             )
         if hourlies > 0:
