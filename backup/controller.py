@@ -21,7 +21,9 @@
 import datetime
 import logging
 import os.path
+import pprint
 import subprocess
+import time
 import traceback
 
 from . import *
@@ -30,6 +32,7 @@ from .config import *
 from .cycle import Cycle
 from .dry_run import if_not_dry_run
 from .engine import rsyncWrapper
+from .version import __version__
 
 
 def main():
@@ -46,6 +49,8 @@ class Controller(_logging.Logging):
         self.config = config
 
     def run(self):
+        self._logger.info("{} {}".format(sys.argv[0], __version__))
+        start_time = time.monotonic()
         try:
             self._general_sanity_checks()
         except:
@@ -66,15 +71,18 @@ class Controller(_logging.Logging):
             except Exception:
                 errors.append(host)
                 self._log_exception(*sys.exc_info())
-                # In a normal situation, _move_log_file() is called and this
-                # method in turn calls _close_file_logger(). However, if an
-                # exception occurs during a backup, we want to close the file
-                # handler before we move on to another host.
-                self._close_file_logger()
+                self._close_logfile()
             except KeyboardInterrupt:
                 errors.append(host)
                 self._logger.error("Keyboard interrupt.")
                 break
+        run_time = time.monotonic() - start_time
+        self._logger.info(
+            "Total run time: {} minutes, {} seconds.".format(
+                int(run_time / 60),
+                int(run_time % 60),
+                )
+            )
         if errors:
             self._logger.error(
                 "Exiting with errors from {}.".format(", ".join(errors))
@@ -96,13 +104,20 @@ class Controller(_logging.Logging):
 
     def _run_host(self, host):
         # TODO use the Cycle().overflow_cycle attribute.
+        start_time = time.monotonic()
         thisconfig = self.config[host]
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])
         dailies = int(thisconfig['dailies'])
-        self._prepare_logfile(dest)
-        self._logger.info("Processing {}.".format(host))
+        # Do checks before anything tries to touch the filesystem.
         self._host_sanity_checks(host)
+        self._open_logfile(dest)
+        self._logger.info("Processing {}.".format(host))
+        self._logger.debug(
+            "Configuration for {}:\n{}".format(
+                host, pprint.pformat(dict(thisconfig))
+                )
+            )
         if hourlies > 0:
             self._logger.info("Starting hourly backup")
             cycle = Cycle(dest, "hourly")
@@ -140,23 +155,33 @@ class Controller(_logging.Logging):
                     self._logger.info("Finished daily backup")
                     self._move_logfile(cycle.snapshots[0].path)
                 cycle.purge(dailies)
+        run_time = time.monotonic() - start_time
+        self._logger.info(
+            "Run time for {}: {} minutes, {} seconds.".format(
+                host,
+                int(run_time / 60),
+                int(run_time % 60),
+                )
+            )
+        self._close_logfile()
 
     @if_not_dry_run
-    def _prepare_logfile(self, path):
-        """Create a log file handler and add it to the root logger.
+    def _open_logfile(self, path):
+        """Create a log file handler and add it to the "rsync" logger.
 
         All the logging done so far was buffered. Just after the handler is
         created and before any further logging, we flush (actually, copy) the
         buffered records to the file handler.
         """
         logfile = os.path.join(path, "backup.log")
-        handler = logging.FileHandler(logfile)
-        handler.logfile = logfile  # For use in _move_logfile method.
+        handler = _logging.MovableFileHandler(logfile)
         handler.setFormatter(_logging.formatters['file'])
         handler.setLevel(logging.DEBUG)
         _logging.handlers['memory'].setTarget(handler)
         _logging.handlers['memory'].flush()
-        logging.getLogger("rsync").addHandler(handler)
+        _logging.handlers['memory'].setTarget(None)
+        logging.getLogger().addHandler(handler)
+        logging.getLogger("rsync").addHandler(handler)  # Does not propagate.
         _logging.handlers['file'] = handler
         self._logger.debug("Log file {} created.".format(logfile))
 
@@ -169,18 +194,20 @@ class Controller(_logging.Logging):
         called to close the file handler, and move the file to the snapshot
         directory.
         """
+        path = os.path.join(path, "backup.log")
         self._logger.debug("Moving log file to {}.".format(path))
         handler = _logging.handlers['file']
-        self._close_file_logger()
-        os.rename(
-            handler.logfile,  # Set by me in _prepare_logfile.
-            os.path.join(path, "backup.log"),
-            )
+        handler.move_to(path)
 
     @if_not_dry_run
-    def _close_file_logger(self):
+    def _close_logfile(self):
+        """Close the log file, remove the handler from the "rsync" logger."""
+        try:
+            handler = _logging.handlers['file']
+        except KeyError:
+            return
         self._logger.debug("Closing log file.")
-        handler = _logging.handlers['file']
+        logging.getLogger().removeHandler(handler)
         logging.getLogger("rsync").removeHandler(handler)
         handler.acquire()
         try:
@@ -190,6 +217,7 @@ class Controller(_logging.Logging):
         del _logging.handlers['file']
 
     def _general_sanity_checks(self):
+        """Sanity checks applicable to the whole application."""
         config = self.config
         if not config.sections():
             raise ValueError(
@@ -214,15 +242,23 @@ class Controller(_logging.Logging):
                     )
 
     def _host_sanity_checks(self, host):
+        """Sanity checks specific to each host."""
         config = self.config[host]
+        if not os.access(config['dest'], os.F_OK):
+            raise FileNotFoundError(
+                "{} does not exist.".format(config['dest'])
+                )
+        self._mkhostdir(config['dest'], host)
         if config['sourcehost'] != DEFAULTS['sourcehost']:
+            cmd = [
+                config['ssh'],
+                "-o", "BatchMode=yes",
+                config['sourcehost'],
+                "exit", "0",
+                ]
+            self._logger.debug("Calling {}".format(" ".join(cmd)))
             returncode = subprocess.call(
-                [
-                    config['ssh'],
-                    "-o", "BatchMode=yes",
-                    config['sourcehost'],
-                    "exit", "0",
-                    ],
+                cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 )
@@ -235,3 +271,18 @@ class Controller(_logging.Logging):
                     )
             else:
                 self._logger.debug("Connection to host is a success.")
+
+    @if_not_dry_run
+    def _mkhostdir(self, dest, host):
+        """
+        This part of _host_sanity_checks is done separately because we
+        want to avoid raising PermissionError on dry-runs.
+        """
+        if not os.access(dest, os.R_OK|os.W_OK):
+            raise PermissionError(
+                "Insufficient read/write permissions on {}.".format(dest)
+                )
+        hostdir = os.path.join(dest, host)
+        if not os.access(hostdir, os.F_OK):
+            self._logger.info("Creating directory {}.".format(hostdir))
+            os.mkdir(hostdir)

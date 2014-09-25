@@ -2,6 +2,7 @@ import configparser
 import datetime
 import glob
 import os
+import shutil
 
 
 @given('the {dir} directory is empty')
@@ -43,6 +44,16 @@ def step_impl(context, dir):
     hidden_files = glob.glob(".*")
     assert len(hidden_files) == 0, os.listdir()
     os.chdir(cwd)
+
+@given("the {dir} directory does not exist")
+def step_impl(context, dir):
+    if dir == "destination":
+        shutil.rmtree(context.testdest)
+    else:
+        cwd = os.getcwd()
+        os.chdir(context.testdest)
+        shutil.rmtree(dir)
+        os.chdir(cwd)
 
 @when("the snapshots in {dir} age {n:d} hours")
 def step_impl(context, dir, n):

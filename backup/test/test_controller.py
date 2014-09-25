@@ -60,10 +60,12 @@ class TestController(BasicSetup):
                 environ={},
                 ).configure()
             )
-        c.run()
+        try:
+            c._run_host("host_1_0")
+        finally:
+            # Reset write permission for tearDown().
+            os.chmod(self.testdest, readonly | stat.S_IWUSR)
         self.assertEqual(
             os.listdir(os.path.join(self.testdest, "host_1_0")),
             [],
             )
-        # Reset write permission for tearDown().
-        os.chmod(self.testdest, readonly | stat.S_IWUSR)
