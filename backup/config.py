@@ -75,6 +75,7 @@ DEFAULTS = {
     'dest': "/root/var/backups",
     'hourlies': "24",
     'dailies': "31",
+    #'weeklies': "8",
     'warn bytes transferred': str(1 * 10**8),  # 100MB
     'bw_warn': "0",
     'bw_err': "0",

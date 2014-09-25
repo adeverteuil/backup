@@ -103,12 +103,12 @@ class Controller(_logging.Logging):
             )
 
     def _run_host(self, host):
-        # TODO use the Cycle().overflow_cycle attribute.
         start_time = time.monotonic()
         thisconfig = self.config[host]
         dest = os.path.join(thisconfig['dest'], host)
         hourlies = int(thisconfig['hourlies'])
         dailies = int(thisconfig['dailies'])
+        #weeklies = int(thisconfig['weeklies'])
         # Do checks before anything tries to touch the filesystem.
         self._host_sanity_checks(host)
         self._open_logfile(dest)
@@ -118,16 +118,16 @@ class Controller(_logging.Logging):
                 host, pprint.pformat(dict(thisconfig))
                 )
             )
+        # Setup Cycle instance(s).
         if hourlies > 0:
             self._logger.info("Starting hourly backup")
             cycle = Cycle(dest, "hourly")
-            rsync = rsyncWrapper(thisconfig)
-            cycle.create_new_snapshot(rsync, thisconfig.getboolean('force'))
-            cycle.purge(hourlies)
-            self._logger.info("Finished hourly backup")
-            self._move_logfile(cycle.snapshots[0].path)
-        if dailies > 0:
+            cycle.overflow_cycle = (Cycle(dest, "daily"), dailies)
+            keepies = hourlies
+        else:
+            # Sanity checks assures that hourlies + dailies > 0.
             cycle = Cycle(dest, "daily")
+            keepies = dailies
             a_day = datetime.timedelta(days=1)
             now = datetime.datetime.now()
             if (len(cycle.snapshots) > 0 and
@@ -136,33 +136,21 @@ class Controller(_logging.Logging):
                     "Most recent daily snapshot is less than one day ago. "
                     "Not doing a daily backup."
                     )
-            else:
-                if hourlies > 0:
-                    # dailies > 0 and hourlies > 0
-                    # Create dailies by archiving hourlies.
-                    self._logger.info("Starting daily archive")
-                    cycle.archive_from(Cycle(dest, "hourly"))
-                    self._logger.info("Finished daily archive")
-                else:
-                    # dailies > 0 but hourlies <= 0
-                    # Create dailies with rsync.
-                    self._logger.info("Starting daily backup")
-                    rsync = rsyncWrapper(thisconfig)
-                    cycle.create_new_snapshot(
-                        rsync,
-                        thisconfig.getboolean('force'),
-                        )
-                    self._logger.info("Finished daily backup")
-                    self._move_logfile(cycle.snapshots[0].path)
-                cycle.purge(dailies)
-        run_time = time.monotonic() - start_time
-        self._logger.info(
-            "Run time for {}: {} minutes, {} seconds.".format(
-                host,
-                int(run_time / 60),
-                int(run_time % 60),
+                cycle = None
+        if cycle:
+            rsync = rsyncWrapper(thisconfig)
+            cycle.create_new_snapshot(rsync, thisconfig.getboolean('force'))
+            cycle.purge(keepies)
+            self._logger.info("Finished hourly backup")
+            self._move_logfile(cycle.snapshots[0].path)
+            run_time = time.monotonic() - start_time
+            self._logger.info(
+                "Run time for {}: {} minutes, {} seconds.".format(
+                    host,
+                    int(run_time / 60),
+                    int(run_time % 60),
+                    )
                 )
-            )
         self._close_logfile()
 
     @if_not_dry_run
@@ -247,6 +235,10 @@ class Controller(_logging.Logging):
         if not os.access(config['dest'], os.F_OK):
             raise FileNotFoundError(
                 "{} does not exist.".format(config['dest'])
+                )
+        if max(int(config['hourlies']), int(config['dailies'])) <= 0:
+            raise RuntimeError(
+                "Please configure to keep at least 1 daily or hourly snapshot."
                 )
         self._mkhostdir(config['dest'], host)
         if config['sourcehost'] != DEFAULTS['sourcehost']:

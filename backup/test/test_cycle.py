@@ -160,6 +160,7 @@ class TestCycle(BasicSetup):
                 3
                 )
 
+    @unittest.skip("Deprecated method.")
     def test_archive_from(self):
         cycle_h = Cycle(self.testdest, "hourly")
         cycle_d = Cycle(self.testdest, "daily")
@@ -283,8 +284,6 @@ class TestCycle(BasicSetup):
             )
 
     def test_feed_with_intermediary_empty_cycle(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
         # Preparation
         os.chdir(self.testdest)
         for h in range(1, 5):
