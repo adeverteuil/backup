@@ -30,11 +30,13 @@ def step_impl(context, text):
 @then('the {dir} directory should contain {n:d} {interval} snapshots')
 def step_impl(context, dir, n, interval):
     cwd = os.getcwd()
-    os.chdir(context.testdest)
-    os.chdir(dir)
-    dirs = glob.glob("{}.*".format(interval))
-    assert len(dirs) == n, os.listdir()
-    os.chdir(cwd)  # behave is confused if we don't go back.
+    try:
+        os.chdir(context.testdest)
+        os.chdir(dir)
+        dirs = glob.glob("{}.*".format(interval))
+        assert len(dirs) == n, os.listdir()
+    finally:
+        os.chdir(cwd)  # behave is confused if we don't go back.
 
 @then("the {dir} directory should contain no hidden files")
 def step_impl(context, dir):
