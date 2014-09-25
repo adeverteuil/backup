@@ -281,3 +281,27 @@ class TestCycle(BasicSetup):
                 "hourly.2014-07-04T23:00",
                 ]
             )
+
+    def test_feed_with_intermediary_empty_cycle(self):
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+        # Preparation
+        os.chdir(self.testdest)
+        for h in range(1, 5):
+            os.mkdir("hourly.2014-07-01T{:02}:00".format(h))
+            open("hourly.2014-07-01T{:02}:00/file".format(h), "w").close()
+        # Start test
+        hourly = Cycle(self.testdest, "hourly")
+        daily = Cycle(self.testdest, "daily")
+        weekly = Cycle(self.testdest, "weekly")
+        hourly.overflow_cycle = (daily, 0)  # This is the catch.
+        daily.overflow_cycle = (weekly, 10)
+        hourly.purge(1)
+        # End of test
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            [
+                "hourly.2014-07-01T04:00",
+                "weekly.2014-07-01T01:00",
+                ]
+            )

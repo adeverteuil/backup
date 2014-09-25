@@ -133,18 +133,35 @@ class Cycle(Lockable, _logging.Logging):
         """
         # Iterate over the snapshots list until we count maxnumber complete
         # backups. Delete snapshots beyond that index.
+        self._logger.debug(
+            "Purging {} cycle, keeping {} snapshots.".format(
+                self.interval,
+                maxnumber,
+                )
+            )
         complete_count = 0
         cutoff_index = 0
         for snapshot in self.snapshots:
+            if complete_count >= maxnumber:
+                break
             if snapshot.status is Status.complete:
                 complete_count += 1
             cutoff_index += 1
-            if complete_count >= maxnumber:
-                break
         if self.overflow_cycle is not None:
+            self._logger.debug(
+                "Feeding {} snapshots into {} cycle.".format(
+                    len(self.snapshots[cutoff_index:]),
+                    self.overflow_cycle[0].interval,
+                    )
+                )
             self.overflow_cycle[0].feed(self.snapshots[cutoff_index:])
             self.overflow_cycle[0].purge(self.overflow_cycle[1])
         else:
+            self._logger.debug(
+                "No overflow cycle. Deleting {} snapshots".format(
+                    len(self.snapshots[cutoff_index:]),
+                    )
+                )
             for snapshot in self.snapshots[cutoff_index:]:
                 with snapshot:
                     snapshot.status = Status.deleting
