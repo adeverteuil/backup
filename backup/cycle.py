@@ -30,7 +30,6 @@ import subprocess
 
 from . import *
 from . import _logging
-from .controller import RSYNC_E_CODES
 from .dry_run import if_not_dry_run
 from .locking import Lockable
 from .snapshot import *
