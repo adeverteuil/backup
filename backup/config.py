@@ -216,7 +216,7 @@ class Configuration(_logging.Logging):
                 _logging.handlers['stream'].setLevel(logging.INFO)
                 lvl = "INFO"
         logger.addHandler(_logging.handlers['memory'])
-        self._logger.debug("Log level set to {}".format(lvl))
+        self._logger.debug("stdout log level set to {}".format(lvl))
         logging.getLogger("rsync").propagate = False
         if self.args.print_rsync:
             logging.getLogger("rsync").addHandler(_logging.handlers['stream'])
