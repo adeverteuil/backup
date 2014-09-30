@@ -63,6 +63,32 @@ class TestSnapshot(BasicSetup):
                     ]
                 )
 
+    def test_set_interval(self):
+        t = datetime.datetime(2014, 7, 1, 10, 10)
+        s = Snapshot(self.testdest, "hourly")
+        s.interval = "daily"
+        s.timestamp = t
+        self.assertEqual(s.interval, "daily")
+        self.assertTrue(s.path.endswith("daily.2014-07-01T10:10"), msg=s.path)
+
+        # Now test renaming directory.
+        s = Snapshot(self.testdest, "hourly")
+        s.mkdir()
+        with s:
+            s.timestamp = t
+            self.assertEqual(
+                sorted(os.listdir(self.testdest)),
+                [".hourly.2014-07-01T10:10.lock", "hourly.2014-07-01T10:10"]
+                )
+            s.interval = "daily"
+            self.assertEqual(
+                sorted(os.listdir(self.testdest)),
+                [
+                    ".daily.2014-07-01T10:10.lock",
+                    "daily.2014-07-01T10:10",
+                    ]
+                )
+
     def test_snapshot_from_index(self):
         os.chdir(self.testdest)
         for d in range(1, 5):

@@ -160,6 +160,7 @@ class TestCycle(BasicSetup):
                 3
                 )
 
+    @unittest.skip("Deprecated method.")
     def test_archive_from(self):
         cycle_h = Cycle(self.testdest, "hourly")
         cycle_d = Cycle(self.testdest, "daily")
@@ -236,3 +237,70 @@ class TestCycle(BasicSetup):
                 ],
             )
         self.assertEqual(len(c.snapshots), 3)
+
+    def test_purge_with_feed_to_cycle(self):
+        # Preparation
+        os.chdir(self.testdest)
+        for h in range(1, 5):
+            os.mkdir("hourly.2014-07-01T{:02}:00".format(h))
+            open("hourly.2014-07-01T{:02}:00/file".format(h), "w").close()
+        # Start of test
+        c = Cycle(self.testdest, "hourly")
+        c.overflow_cycle = (Cycle(self.testdest, "daily"), 1)
+        c.purge(1)
+        # End of test
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            [
+                "daily.2014-07-01T01:00",
+                "hourly.2014-07-01T04:00",
+                ],
+            )
+
+    def test_feed_to_cycle_large_amount_of_snapshots(self):
+        # Preparation
+        os.chdir(self.testdest)
+        for d in range(1, 5):
+            for h in range(24):
+                os.mkdir("hourly.2014-07-{:02}T{:02}:00".format(d, h))
+                open(
+                    "hourly.2014-07-{:02}T{:02}:00/file".format(d, h),
+                    "w",
+                    ).close()
+        # Start test
+        c = Cycle(self.testdest, "hourly")
+        c.overflow_cycle = (Cycle(self.testdest, "daily"), 10)
+        c.purge(1)
+        # End of test
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            [
+                "daily.2014-07-01T00:00",
+                "daily.2014-07-02T00:00",
+                "daily.2014-07-03T00:00",
+                "daily.2014-07-04T00:00",
+                "hourly.2014-07-04T23:00",
+                ]
+            )
+
+    def test_feed_with_intermediary_empty_cycle(self):
+        # Preparation
+        os.chdir(self.testdest)
+        for h in range(1, 5):
+            os.mkdir("hourly.2014-07-01T{:02}:00".format(h))
+            open("hourly.2014-07-01T{:02}:00/file".format(h), "w").close()
+        # Start test
+        hourly = Cycle(self.testdest, "hourly")
+        daily = Cycle(self.testdest, "daily")
+        weekly = Cycle(self.testdest, "weekly")
+        hourly.overflow_cycle = (daily, 0)  # This is the catch.
+        daily.overflow_cycle = (weekly, 10)
+        hourly.purge(1)
+        # End of test
+        self.assertEqual(
+            sorted(os.listdir(self.testdest)),
+            [
+                "hourly.2014-07-01T04:00",
+                "weekly.2014-07-01T01:00",
+                ]
+            )
