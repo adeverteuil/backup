@@ -2,7 +2,7 @@ Alexandre's backup script
 =========================
 
 :Author: alexandre@deverteuil.net
-:Date:   2014-07-28
+:Date:   2014-10-01
 :Copyright: GPL
 
 Introduction
@@ -37,11 +37,12 @@ Features
 * Detailed logging to log files, but quiet on stdout unless something
   goes wrong.
 * Configurable with global and host specific keys.
-* Bandwidth cap protection, useful if you have a lame ISP.
+* Bandwidth cap protection, useful if you have a lame ISP and do backups
+  over the Internet.
 * One hourly call processes all hosts and backup intervals (hourly + daily).
 * Dry run option.
 * Locking mechanism and state files makes resuming after a crash trivial.
-* Over 50 unit tests, + integration tests with ``behave``.
+* Over 60 unit tests, + integration tests with ``behave``.
 
 Development
 -----------
