@@ -71,17 +71,17 @@ class TestConfiguration(BasicSetup):
         c._parse_args()
         with self.assertLogs("backup.config.Configuration", "DEBUG") as cm:
             c._do_early_logging_config()
-        self.assertIn("Log level set to WARNING", cm.output[0])
+        self.assertIn("stdout log level set to WARNING", cm.output[0])
         c.argv = ["-v"]
         c._parse_args()
         with self.assertLogs("backup.config.Configuration", "DEBUG") as cm:
             c._do_early_logging_config()
-        self.assertIn("Log level set to INFO", cm.output[0])
+        self.assertIn("stdout log level set to INFO", cm.output[0])
         c.argv = ["-vv"]
         c._parse_args()
         with self.assertLogs("backup.config.Configuration", "DEBUG") as cm:
             c._do_early_logging_config()
-        self.assertIn("Log level set to DEBUG", cm.output[0])
+        self.assertIn("stdout log level set to DEBUG", cm.output[0])
 
     def test_read_config(self):
         c = Configuration(argv=[])
