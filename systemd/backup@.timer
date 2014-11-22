@@ -3,3 +3,6 @@ Description=Timer unit for %i backup.
 
 [Timer]
 OnCalendar=hourly
+
+[Install]
+WantedBy=multi-user.target

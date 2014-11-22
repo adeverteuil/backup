@@ -1,9 +1,11 @@
 [Unit]
-Description=Make backups
-EnvironmentFile=-/tmp/agent-info
+Description=Do backups
+RequiresMountsFor=/root/var/backups
 
 [Service]
+EnvironmentFile=-/tmp/agent-info
 Type=oneshot
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
-ExecStart=/usr/bin/backup
+ExecStart=/usr/bin/backup -v
+ExecStartPost=/usr/bin/sync
