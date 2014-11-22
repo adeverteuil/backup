@@ -14,6 +14,13 @@ def step_impl(context):
     context.call_app()
     print(context.output)
 
+@given("backup was invoked without parameters")
+def step_impl(context):
+    context.call_app_without_waiting()
+    # We will at least wait for files to be transferred.
+    import time
+    time.sleep(0.2)
+
 @when("I invoke backup with the arguments \"{args}\"")
 def step_impl(context, args):
     context.call_app(*args.split(" "))
@@ -95,3 +102,11 @@ def step_impl(context, key, section, value):
     config[section][key] = value
     with open(context.configfile, "w") as f:
         config.write(f)
+
+@when('I kill the process')
+def step_impl(context):
+    context.process.terminate()
+    context.output = context.process.communicate()[0]
+    context.returncode = context.process.returncode
+    print("Printing output:")
+    print(context.output)

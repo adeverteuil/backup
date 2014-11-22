@@ -22,6 +22,7 @@ import datetime
 import logging
 import os.path
 import pprint
+import signal
 import subprocess
 import time
 import traceback
@@ -35,7 +36,19 @@ from .engine import rsyncWrapper
 from .version import __version__
 
 
+def _sigterm_handler(signum, frame):
+    """Handler for SIGTERM, SIGQUIT, SIGHUP.
+
+    Raise SystemExit rather than kill the program.
+    The exception will be caught, the subprocess, if any, will be terminated,
+    and lock files will be cleaned up.
+    """
+    raise SystemExit("Signal {} received".format(signum))
+
+
 def main():
+    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT):
+        signal.signal(sig, _sigterm_handler)
     logging.getLogger().addHandler(_logging.handlers['stream'])
     exit(Controller(Configuration().configure()).run())
 

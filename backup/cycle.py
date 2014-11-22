@@ -237,7 +237,9 @@ class Cycle(Lockable, _logging.Logging):
                             RSYNC_E_CODES.get(returncode, "unknown error"),
                             )
                         )
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, SystemExit):
+                # Signals SIGTERM, SIGKILL, SIGHUP are handled in the
+                # controller module. The handler raises SystemExit.
                 try:
                     engine.process.terminate()
                 except OSError:

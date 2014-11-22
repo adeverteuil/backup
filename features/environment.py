@@ -20,6 +20,16 @@ def before_all(context):
             context.output = e.output
     context.call_app = call_app
 
+    def call_app_without_waiting(*args):
+        context.args = ["backup"] + list(args)
+        context.process = subprocess.Popen(
+            context.args,
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            )
+    context.call_app_without_waiting = call_app_without_waiting
+
 def before_scenario(context, scenario):
     if "notempfile" in scenario.tags:
         return
