@@ -44,7 +44,7 @@ from .locking import Lockable
 
 Status = enum.Enum(
     "Status",
-    "void blank syncing, flagged, complete, deleting, deleted",
+    "void, blank, syncing, flagged, complete, deleting, deleted",
     )
 
 
