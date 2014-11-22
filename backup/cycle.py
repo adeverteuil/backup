@@ -234,7 +234,7 @@ class Cycle(Lockable, _logging.Logging):
                     raise RuntimeError(
                         "Engine returned {} ({}).".format(
                             returncode,
-                            RSYNC_E_CODES[returncode],
+                            RSYNC_E_CODES.get(returncode, "unknown error"),
                             )
                         )
             except KeyboardInterrupt:

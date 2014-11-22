@@ -304,3 +304,17 @@ class TestCycle(BasicSetup):
                 "weekly.2014-07-01T01:00",
                 ]
             )
+
+    def test_error_code_unknown(self):
+        # Test the case when rsync exits with an error code that is not
+        # in RSYNC_ERROR_CODES. It should just abort and log that an
+        # an unknown error occurred.
+        cycle = Cycle(self.testdest, "hourly")
+        configuration = Configuration(argv=["-c", self.configfile], environ={})
+        config = configuration.configure()
+        rsync = rsyncWrapper(config['default'])
+        rsync.wait = unittest.mock.Mock(return_value=255)
+        rsync.sync_to = unittest.mock.Mock()
+        with self.assertRaisesRegex(RuntimeError, r"255 \(unknown error\)"), \
+                cycle:
+            cycle.create_new_snapshot(rsync)
