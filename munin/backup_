@@ -1,0 +1,151 @@
+#!/bin/python
+
+import datetime
+import os
+import os.path
+import re
+import sys
+
+
+BASEDIR = "/var/backups"
+RE_TIMESTAMP = re.compile(r"^.*\.(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$")
+RE_DURATION = re.compile(r"^.*Run time for \w+: (\d+) minutes, (\d+) seconds.$")
+
+
+def main():
+    if sys.argv[0].endswith("_age"):
+        if len(sys.argv) > 1 and sys.argv[1] == "config":
+            config_age()
+        else:
+            fetch_age()
+    elif sys.argv[0].endswith("_duration"):
+        if len(sys.argv) > 1 and sys.argv[1] == "config":
+            config_duration()
+        else:
+            fetch_duration()
+
+
+def config_age():
+    global_attributes = [
+        "graph_title Age of backups",
+        "graph_vlabel hours",
+        "graph_category disk",
+        "graph_args --logarithmic",
+        "graph_scale no",
+        ]
+    host_attributes = []
+    graph_order = []
+    hosts = read_hosts()
+    for host in hosts:
+        name = host['name']
+        host_attributes += [
+            "{}.min 0".format(name),
+            "{}.warning :24".format(name),
+            "{}.label {}".format(name, name),
+            ]
+        graph_order += [name]
+    global_attributes += ["graph_order " + " ".join(graph_order)]
+    print("\n".join(global_attributes))
+    print("\n".join(host_attributes))
+
+
+def fetch_age():
+    now = datetime.datetime.now()
+    hosts = read_hosts()
+    for host in hosts:
+        if host['timestamp'] is None:
+            age = "U"
+        else:
+            age = now - host['timestamp']
+            age = "{:.2f}".format(age.total_seconds()/3600)
+        print("{}.value {}".format(host['name'], age))
+
+
+def config_duration():
+    global_attributes = [
+        "graph_title Duration of backups",
+        "graph_vlabel minutes",
+        "graph_category disk",
+        "graph_scale no",
+        ]
+    host_attributes = []
+    graph_order = []
+    for host in read_hosts():
+        name = host['name']
+        host_attributes += [
+            "{}.min 0".format(name),
+            "{}.warning :15".format(name),
+            "{}.label {}".format(name, name),
+            ]
+    print("\n".join(global_attributes))
+    print("\n".join(host_attributes))
+
+
+def fetch_duration():
+    for host in read_hosts():
+        if host['duration'] is None:
+            duration = "U"
+        else:
+            duration = "{:.2f}".format(host['duration'])
+        print("{}.value {}".format(host['name'], duration))
+
+
+def read_hosts():
+    hosts = []
+    for host in sorted(os.listdir(BASEDIR)):
+        if os.path.isfile(os.path.join(BASEDIR, host)):
+            continue
+        if not os.access(os.path.join(BASEDIR, host), os.R_OK|os.X_OK):
+            continue
+        timestamp, dir = find_most_recent_backup(host)
+        duration = extract_duration_from_log(host, dir)
+        if timestamp is not None:
+            hosts += [{
+                "name": host,
+                "timestamp": timestamp,
+                "duration": duration,
+                }]
+    return hosts
+
+
+def find_most_recent_backup(host):
+    timestamps = []
+    for d in os.listdir(os.path.join(BASEDIR, host)):
+        if not os.path.exists(
+            os.path.join(BASEDIR, host, d, "backup.log")
+            ):
+            continue
+        timestamp = get_timestamp(d)
+        timestamps += [(timestamp, d)]
+    if not timestamps:
+        return (None, None)
+    else:
+        timestamps.sort()
+        return timestamps[-1]
+
+
+def extract_duration_from_log(host, dir):
+    if dir is None:
+        return None
+    with open(
+        os.path.join(BASEDIR, host, dir, "backup.log"),
+        encoding="UTF-8"
+        ) as f:
+        line = list(f)[-2]
+    match = RE_DURATION.match(line)
+    if match:
+        m, s = match.group(1, 2)
+        duration = int(m) + int(s) / 60
+    else:
+        duration = None
+    return duration
+
+
+def get_timestamp(dirname):
+    match = RE_TIMESTAMP.match(dirname)
+    timestamp = datetime.datetime(*[int(match.group(i)) for i in range(1, 6)])
+    return timestamp
+
+
+if __name__ == "__main__":
+    main()
