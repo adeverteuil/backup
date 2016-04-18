@@ -2,7 +2,7 @@ Alexandre's backup script
 =========================
 
 :Author: alexandre@deverteuil.net
-:Date:   2014-10-01
+:Date:   2016-04-17
 :Copyright: GPL
 
 Introduction
@@ -124,7 +124,7 @@ Short term goals
 Copying
 -------
 
-Copyright © 2014  Alexandre de Verteuil
+Copyright © 2014, 2016  Alexandre de Verteuil
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
