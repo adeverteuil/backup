@@ -230,3 +230,17 @@ searching a file in the backup directory.
     ::
 
         alias baklocate="locate -d /var/lib/mlocate/backup.db"
+
+Restricted ssh login
+--------------------
+
+For increased security, it is possible to back up a remote system
+without permitting full root access by using an ssh forced command.
+The support directory of the rsync distribution has an example script
+named rrsync (for restricted rsync) that can be used with a restricted
+ssh login. Here is an example authorized_hosts line that makes use of
+restrictive options, yet allows a full system backup.
+
+    ::
+
+        command="/usr/lib/rsync/rrsync -ro /",no-port-forwarding,no-X11-forwarding,no-pty,no-agent-forwarding,no-user-rc ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCag5VyftLmoXCQtO9QAoJfKhswrdPdJTWJq2+xYqMp5SFgEDhc3XMJkoASQK7AdzfLKEFCNAeIkM9EmpO1xhU33rD/GKYMCJGxKLdAMoTeOuFKAHl+802f35SZa6Yzmcuw/Z9jLUm4mWuCsqb23T+XM9L2MKBt6bwQQI+32wHnr6Bgmn56jEz4PSvH9rquPPox3Sxpzhs5tUClJt1hx/sQnK/ZpOrO4TBTzQRo1/o+F0rt66ab9IdCICJJDGDgdRklf1sdnpvwvE6Vg9u7GulaJBXthyR9ZnSKgdwiiiQkQvSTp6qBzKjJhKD+NrMA5Oht26ZrzFuw6mdUDuJYI/dh root@backupserver

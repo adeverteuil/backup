@@ -109,6 +109,13 @@ configuration file with the following content:
 Get in your virtualenv, run ``pip install -e .`` from the project
 directory, then run ``backup -c /home/<your_username>/tmp/backup -v``.
 
+Previewing the man page
+~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    rst2man backup.1.gz | man -l -
+
 Short term goals
 ~~~~~~~~~~~~~~~~
 
