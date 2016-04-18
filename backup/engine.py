@@ -65,6 +65,7 @@ class rsyncWrapper(_logging.Logging):
             "--delete",
             "--archive",
             "--one-file-system",
+            "--numeric-ids",
             "--partial-dir=.rsync-partial",
             "--verbose",
             "--out-format=#%l#%f",  # Format: "#" + file_size + "#" + file_name
