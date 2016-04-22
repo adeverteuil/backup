@@ -70,6 +70,7 @@ DEFAULTS = {
     'configdir': "/etc/backup.d",
     'rsync': "/usr/bin/rsync",
     'ssh': "/usr/bin/ssh",
+    'ssh_port': "22",
     'sourcehost': "localhost",
     'sourcedirs': _make_sources_list(),
     'dest': "/root/var/backups",

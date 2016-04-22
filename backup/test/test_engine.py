@@ -39,6 +39,7 @@ class TestEngine(BasicSetup):
                 'configdir': self.configdir,
                 'bw_warn': "0",
                 'bw_err': "0",
+                'ssh_port': "22",
                 }
             )['DEFAULT']
 
@@ -95,7 +96,7 @@ class TestEngine(BasicSetup):
         expected = expected[0:8]
         expected += [
             "--bwlimit=30",
-            "--rsh=ssh -o BatchMode=yes",
+            "--rsh=ssh -p 22 -o BatchMode=yes",
             "root@machine:"+self.testsource,
             ]
         r = rsyncWrapper(self.minimal_options)
