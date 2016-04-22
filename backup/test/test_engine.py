@@ -66,6 +66,7 @@ class TestEngine(BasicSetup):
                 "--delete",
                 "--archive",
                 "--one-file-system",
+                "--numeric-ids",
                 "--partial-dir=.rsync-partial",
                 "--verbose",
                 "--out-format=#%l#%f",
@@ -81,6 +82,7 @@ class TestEngine(BasicSetup):
             "--delete",
             "--archive",
             "--one-file-system",
+            "--numeric-ids",
             "--partial-dir=.rsync-partial",
             "--verbose",
             "--out-format=#%l#%f",
@@ -90,7 +92,7 @@ class TestEngine(BasicSetup):
 
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
         self.minimal_options.update(options)
-        expected = expected[0:7]
+        expected = expected[0:8]
         expected += [
             "--bwlimit=30",
             "--rsh=ssh -o BatchMode=yes",
