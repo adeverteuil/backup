@@ -65,6 +65,7 @@ class rsyncWrapper(_logging.Logging):
             "--delete",
             "--archive",
             "--one-file-system",
+            "--numeric-ids",
             "--partial-dir=.rsync-partial",
             "--verbose",
             "--out-format=#%l#%f",  # Format: "#" + file_size + "#" + file_name
@@ -90,7 +91,9 @@ class rsyncWrapper(_logging.Logging):
         # Append source directories.
         sourcedirs = options['sourcedirs'].split(":")
         if options['sourcehost'] != DEFAULTS['sourcehost']:
-            args.append("--rsh=ssh -o BatchMode=yes")
+            args.append(
+                "--rsh=ssh -p {} -o BatchMode=yes".format(options['ssh_port'])
+                )
             # Transform this:  ["dir1", "dir2", "dir3"]
             # into this: ["sourcehost:dir1", ":dir2", ":dir3"]
             sourcedirs = [":"+dir for dir in sourcedirs]

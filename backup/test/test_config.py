@@ -41,6 +41,11 @@ class TestConfiguration(BasicSetup):
         for d in ("/etc", "/home", "/usr"):
             self.assertIn(d, sources)
 
+    def test_default_ssh_port(self):
+        c = Configuration()
+        options = c.config.defaults()
+        self.assertEqual(options['ssh_port'], "22")
+
     def test_parse_environ(self):
         # Empty environment
         c = Configuration(environ=dict())

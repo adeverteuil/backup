@@ -254,28 +254,6 @@ class Controller(_logging.Logging):
                 "Please configure to keep at least 1 daily or hourly snapshot."
                 )
         self._mkhostdir(config['dest'], host)
-        if config['sourcehost'] != DEFAULTS['sourcehost']:
-            cmd = [
-                config['ssh'],
-                "-o", "BatchMode=yes",
-                config['sourcehost'],
-                "exit", "0",
-                ]
-            self._logger.debug("Calling {}".format(" ".join(cmd)))
-            returncode = subprocess.call(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                )
-            if returncode > 0:
-                raise ResourceUnavailableException(
-                    "Unable to connect to {}; ssh returned {}".format(
-                        host,
-                        returncode,
-                        )
-                    )
-            else:
-                self._logger.debug("Connection to host is a success.")
 
     @if_not_dry_run
     def _mkhostdir(self, dest, host):

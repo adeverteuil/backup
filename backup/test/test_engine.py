@@ -39,6 +39,7 @@ class TestEngine(BasicSetup):
                 'configdir': self.configdir,
                 'bw_warn': "0",
                 'bw_err': "0",
+                'ssh_port': "22",
                 }
             )['DEFAULT']
 
@@ -66,6 +67,7 @@ class TestEngine(BasicSetup):
                 "--delete",
                 "--archive",
                 "--one-file-system",
+                "--numeric-ids",
                 "--partial-dir=.rsync-partial",
                 "--verbose",
                 "--out-format=#%l#%f",
@@ -81,6 +83,7 @@ class TestEngine(BasicSetup):
             "--delete",
             "--archive",
             "--one-file-system",
+            "--numeric-ids",
             "--partial-dir=.rsync-partial",
             "--verbose",
             "--out-format=#%l#%f",
@@ -90,10 +93,10 @@ class TestEngine(BasicSetup):
 
         options = {'bwlimit': "30", 'sourcehost': "root@machine"}
         self.minimal_options.update(options)
-        expected = expected[0:7]
+        expected = expected[0:8]
         expected += [
             "--bwlimit=30",
-            "--rsh=ssh -o BatchMode=yes",
+            "--rsh=ssh -p 22 -o BatchMode=yes",
             "root@machine:"+self.testsource,
             ]
         r = rsyncWrapper(self.minimal_options)

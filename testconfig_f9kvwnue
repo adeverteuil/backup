@@ -1,0 +1,14 @@
+[default]
+sourcedirs=/home/alex/src/backup/testsource_7i236dhx/
+dest=/home/alex/src/backup/testdest_tgv5_vxx
+excludefile=/dev/null
+filterfile=/home/alex/src/backup/testconfigdir_68qg7czk
+[host_1_1]
+hourlies = 1
+dailies = 1
+[host_0_1]
+hourlies = 0
+dailies = 1
+[host_1_0]
+hourlies = 1
+dailies = 0

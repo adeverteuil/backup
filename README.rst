@@ -2,7 +2,7 @@ Alexandre's backup script
 =========================
 
 :Author: alexandre@deverteuil.net
-:Date:   2014-10-01
+:Date:   2016-04-17
 :Copyright: GPL
 
 Introduction
@@ -109,6 +109,13 @@ configuration file with the following content:
 Get in your virtualenv, run ``pip install -e .`` from the project
 directory, then run ``backup -c /home/<your_username>/tmp/backup -v``.
 
+Previewing the man page
+~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    rst2man backup.1.gz | man -l -
+
 Short term goals
 ~~~~~~~~~~~~~~~~
 
@@ -124,7 +131,7 @@ Short term goals
 Copying
 -------
 
-Copyright © 2014  Alexandre de Verteuil
+Copyright © 2014, 2016  Alexandre de Verteuil
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
